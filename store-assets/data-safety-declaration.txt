@@ -1,0 +1,120 @@
+╔═══════════════════════════════════════════════════════════╗
+║  GOOGLE PLAY DATA SAFETY DECLARATION — MexiChat           ║
+║  Fill this in Play Console → App content → Data safety    ║
+╚═══════════════════════════════════════════════════════════╝
+
+OVERVIEW:
+  App Name: MexiChat
+  Package: mx.mexichat.app
+  Does your app collect or share user data? YES
+
+═══════════════════════════════════════════════════════════
+DATA TYPES COLLECTED:
+═══════════════════════════════════════════════════════════
+
+1. PERSONAL INFO
+   ┌─────────────────────┬───────────┬────────────┬──────────────┐
+   │ Data Type           │ Collected │ Shared     │ Purpose      │
+   ├─────────────────────┼───────────┼────────────┼──────────────┤
+   │ Name                │ YES       │ NO         │ App function │
+   │ Email               │ YES       │ NO         │ Account mgmt │
+   │ Phone number        │ YES       │ NO         │ Account mgmt │
+   │ User IDs            │ YES       │ NO         │ App function │
+   └─────────────────────┴───────────┴────────────┴──────────────┘
+
+2. MESSAGES
+   ┌─────────────────────┬───────────┬───────────��┬──────────────┐
+   │ Data Type           │ Collected │ Shared     │ Purpose      │
+   ├─────────────────────┼───────────┼────────────┼──────────────┤
+   │ Emails/SMS/Messages │ YES (E2E) │ NO         │ App function │
+   └─────────────────────┴───────────┴────────────┴──────────────┘
+   Note: Messages are encrypted end-to-end. Server cannot read content.
+
+3. PHOTOS & VIDEOS
+   ┌─────────────────────┬───────────┬────────────┬──────────────┐
+   │ Data Type           │ Collected │ Shared     │ Purpose      │
+   ├─────────────────────┼───────────┼────────────┼──────────────┤
+   │ Photos              │ YES       │ NO         │ App function │
+   │ Videos              │ YES       │ NO         │ App function │
+   └─────────────────────┴───────────┴────────────┴──────────────┘
+
+4. AUDIO
+   ┌─────────────────────┬───────────┬────────────┬──────────────┐
+   │ Data Type           │ Collected │ Shared     │ Purpose      │
+   ├─────────────────────┼───────────┼────────────┼──────────────┤
+   │ Voice/sound records │ YES       │ NO         │ App function │
+   └─────────────────────┴───────────┴────────────┴──────────────┘
+
+5. CONTACTS
+   ┌─────────────────────┬───────────┬────────────┬──────────────┐
+   │ Data Type           │ Collected │ Shared     │ Purpose      │
+   ├─────────────────────┼───────────┼────────────┼──────────────┤
+   │ Contacts            │ YES       │ NO         │ App function │
+   └─────────────────────┴───────────┴────────────┴──────────────┘
+   Note: Only used to find friends already on MexiChat.
+
+6. FINANCIAL INFO
+   ┌─────────────────────┬───────────┬────────────┬──────────────┐
+   │ Data Type           │ Collected │ Shared     │ Purpose      │
+   ├─────────────────────┼───────────┼────────────┼──────────────┤
+   │ Purchase history    │ YES       │ NO         │ App function │
+   │ Payment info        │ YES       │ NO         │ App function │
+   └─────────────────────┴───────────┴────────────┴──────���───────┘
+
+═══════════════════════════════════════════════════════════
+SECURITY PRACTICES:
+═══════════════════════════════════════════════════════════
+
+✅ Data is encrypted in transit (HTTPS/TLS)
+✅ Data is encrypted at rest
+✅ Messages use end-to-end encryption (E2E)
+✅ Users can request data deletion
+✅ Data deletion request mechanism: In-app (Settings → Delete Account)
+   or email soporte@mexichat.app
+
+═══════════════════════════════════════════════════════════
+ANSWERS FOR PLAY CONSOLE FORM:
+═══════════════════════════════════════════════════════════
+
+Q: Does your app collect or share any of the required user data types?
+A: YES
+
+Q: Is all of the user data collected by your app encrypted in transit?
+A: YES
+
+Q: Do you provide a way for users to request that their data is deleted?
+A: YES — In-app settings or email soporte@mexichat.app
+
+Q: Does your app share user data with third parties?
+A: NO
+
+Q: Does your app use data for advertising or marketing?
+A: NO
+
+Q: Does your app use data for account management?
+A: YES (email, phone for login)
+
+Q: Does your app use data for app functionality?
+A: YES (messages, media, contacts, payments)
+
+Q: Does your app use data for analytics?
+A: NO
+
+Q: Does your app use data for fraud prevention/security?
+A: YES (basic security measures)
+
+═══════════════════════════════════════════════════════════
+CONTENT RATING QUESTIONNAIRE:
+═══════════════════════════════════════════════════════════
+
+Q: Does your app contain violence?                    NO
+Q: Does your app contain sexual content?              NO  
+Q: Does your app contain profanity?                   NO
+Q: Does your app contain drug references?             NO
+Q: Does your app allow user-generated content?        YES (community posts)
+Q: Does your app allow social interaction?            YES (messaging)
+Q: Does your app share user location?                 YES (optional sharing)
+Q: Does your app contain gambling?                    NO
+Q: Does your app allow purchases?                     NO (payments are P2P transfers)
+
+RESULT: Likely rating → Everyone / PEGI 3 / USK 0

@@ -1,0 +1,288 @@
+/* ═══════════════════════════════════════════════════════════
+   DIAMOND UI THEME - Clasico Verde
+   Green accent header, classic chat doodle background, clean familiar layout.
+   ═══════════════════════════════════════════════════════════ */
+
+[data-mc-theme="diamond"] {
+  --diamond-green: #00a884;
+  --diamond-green-dark: #008069;
+  --diamond-green-light: #25d366;
+  --diamond-header: #008069;
+  --diamond-chat-bg: #efeae2;
+  --diamond-bubble-sent: #d9fdd3;
+  --diamond-bubble-received: #ffffff;
+  --diamond-panel-bg: #f0f2f5;
+  --diamond-sidebar: #ffffff;
+  --diamond-search-bg: #f0f2f5;
+
+  /* Override base --mc-* variables so all base styles work */
+  --mc-blue: #00a884;
+  --mc-blue-dark: #008069;
+  --mc-blue-light: #25d366;
+  --mc-accent: #00a884;
+  --mc-sidebar: #ffffff;
+  --mc-sidebar-hover: rgba(0, 168, 132, 0.04);
+  --mc-sidebar-active: rgba(0, 168, 132, 0.08);
+  --mc-chat-bg: #efeae2;
+  --mc-msg-sent: #d9fdd3;
+  --mc-msg-received: #ffffff;
+  --mc-border: #d1d7db;
+  --mc-text: #111b21;
+  --mc-text-muted: #667781;
+  --mc-online: #25d366;
+  --mc-offline: #cbd5e1;
+}
+
+/* --- Container --- */
+[data-mc-theme="diamond"] .mensajes-container {
+  background: var(--diamond-panel-bg);
+}
+
+/* --- Sidebar --- */
+[data-mc-theme="diamond"] .mensajes-sidebar {
+  background: var(--diamond-sidebar);
+  border-right: 1px solid #d1d7db;
+}
+
+[data-mc-theme="diamond"] .mensajes-sidebar-header {
+  background: var(--diamond-header) !important;
+  border-bottom: none;
+  color: #ffffff !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-sidebar-header * {
+  color: #ffffff !important;
+}
+
+/* --- Tabs --- */
+[data-mc-theme="diamond"] .mensajes-tabs {
+  background: var(--diamond-panel-bg);
+  border-bottom: 1px solid #d1d7db;
+}
+
+[data-mc-theme="diamond"] .mensajes-tab.active {
+  color: var(--diamond-green) !important;
+  border-bottom: 2px solid var(--diamond-green);
+  background: transparent;
+}
+
+[data-mc-theme="diamond"] .mensajes-tab {
+  color: #54656f;
+}
+
+/* --- Search --- */
+[data-mc-theme="diamond"] .mensajes-search-wrapper {
+  background: var(--diamond-search-bg) !important;
+  border: none !important;
+  border-radius: 8px;
+}
+
+[data-mc-theme="diamond"] .mensajes-search-wrapper input {
+  color: #3b4a54;
+}
+
+/* --- Chat Items --- */
+[data-mc-theme="diamond"] .mensajes-chat-item {
+  border-bottom: 1px solid #f0f2f5;
+  border-radius: 0;
+  margin: 0;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-item:hover {
+  background: #f5f6f6 !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-item.active {
+  background: #f0f2f5 !important;
+  border-left: none;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-item-name {
+  color: #111b21;
+  font-weight: 500;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-item-message {
+  color: #667781;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-item-time {
+  color: #667781;
+}
+
+/* --- Chat Header (GREEN!) --- */
+[data-mc-theme="diamond"] .mensajes-chat-header {
+  background: var(--diamond-header) !important;
+  border-bottom: none;
+  box-shadow: none;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-header-name {
+  color: #ffffff !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-header-status {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-header-actions button,
+[data-mc-theme="diamond"] .mensajes-chat-header-btn {
+  color: #ffffff !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-header-actions button:hover,
+[data-mc-theme="diamond"] .mensajes-chat-header-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* --- Main Chat Area --- */
+[data-mc-theme="diamond"] .mensajes-main {
+  background: var(--diamond-chat-bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg width='400' height='400' viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23c8c3ba' stroke-width='0.5' opacity='0.35'%3E%3Cpath d='M20 30 Q25 20 30 30 Q25 40 20 30' /%3E%3Crect x='60' y='20' width='12' height='12' rx='2' /%3E%3Ccircle cx='120' cy='30' r='6' /%3E%3Cpath d='M170 25 l5 10 l5-10 z' /%3E%3Cpath d='M220 20 l8 5 l-3 9 l-10 0 l-3-9 z' /%3E%3Cpath d='M280 30 Q290 20 300 30 L290 25 Z' /%3E%3Ccircle cx='340' cy='28' r='4' /%3E%3Crect x='370' y='22' width='8' height='14' rx='2' /%3E%3Cpath d='M30 80 l6 6 l6-6' /%3E%3Ccircle cx='80' cy='85' r='5' /%3E%3Crect x='120' y='78' width='10' height='10' rx='1' /%3E%3Cpath d='M180 75 Q185 90 190 75' /%3E%3Cpath d='M230 80 l4 8 l4-8 z' /%3E%3Ccircle cx='290' cy='82' r='6' /%3E%3Crect x='330' y='76' width='12' height='12' rx='2' /%3E%3Cpath d='M380 85 Q385 75 390 85' /%3E%3Cpath d='M25 140 l10 0 l0 10 l-10 0 z' /%3E%3Ccircle cx='85' cy='140' r='5' /%3E%3Cpath d='M135 135 Q140 145 145 135 Q140 150 135 135' /%3E%3Cpath d='M190 140 l6 0 l-3 6 z' /%3E%3Crect x='240' y='134' width='10' height='10' rx='2' /%3E%3Ccircle cx='300' cy='138' r='4' /%3E%3Cpath d='M345 140 Q355 130 365 140 L355 135 Z' /%3E%3Cpath d='M20 200 Q30 190 40 200 Q30 210 20 200' /%3E%3Crect x='80' y='194' width='8' height='12' rx='2' /%3E%3Ccircle cx='140' cy='200' r='5' /%3E%3Cpath d='M190 195 l5 10 l5-10 z' /%3E%3Crect x='240' y='192' width='12' height='12' rx='2' /%3E%3Ccircle cx='300' cy='198' r='6' /%3E%3Cpath d='M350 200 l4 8 l4-8 z' /%3E%3Cpath d='M30 260 l8 4 l-2 9 l-9 1 l-5-8 z' /%3E%3Ccircle cx='80' cy='258' r='5' /%3E%3Crect x='130' y='252' width='10' height='10' rx='1' /%3E%3Cpath d='M185 260 Q190 250 195 260' /%3E%3Ccircle cx='240' cy='255' r='4' /%3E%3Cpath d='M290 252 l6 6 l6-6' /%3E%3Crect x='340' y='250' width='12' height='14' rx='2' /%3E%3Cpath d='M25 320 Q30 310 35 320 Q30 330 25 320' /%3E%3Ccircle cx='90' cy='318' r='6' /%3E%3Crect x='140' y='312' width='8' height='12' rx='2' /%3E%3Cpath d='M195 315 l5 10 l5-10 z' /%3E%3Ccircle cx='250' cy='320' r='5' /%3E%3Cpath d='M300 318 l4 8 l4-8 z' /%3E%3Crect x='350' y='312' width='10' height='10' rx='2' /%3E%3Cpath d='M20 375 l6 6 l6-6' /%3E%3Ccircle cx='80' cy='378' r='4' /%3E%3Crect x='130' y='372' width='10' height='10' rx='1' /%3E%3Cpath d='M190 375 Q195 385 200 375' /%3E%3Ccircle cx='250' cy='378' r='5' /%3E%3Crect x='300' y='372' width='8' height='12' rx='2' /%3E%3Cpath d='M355 378 l5 8 l5-8 z' /%3E%3C/g%3E%3C/svg%3E");
+  background-size: 400px;
+}
+
+/* --- Message Bubbles --- */
+[data-mc-theme="diamond"] .mensajes-msg.sent .mensajes-msg-bubble {
+  background: var(--diamond-bubble-sent) !important;
+  color: #111b21 !important;
+  border-radius: 8px 8px 0 8px;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+}
+
+[data-mc-theme="diamond"] .mensajes-msg.sent .mensajes-msg-bubble .mensajes-msg-text {
+  color: #111b21 !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-msg.sent .mensajes-msg-bubble .mensajes-msg-time {
+  color: #667781 !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-msg.received .mensajes-msg-bubble {
+  background: var(--diamond-bubble-received) !important;
+  color: #111b21 !important;
+  border-radius: 8px 8px 8px 0;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+}
+
+[data-mc-theme="diamond"] .mensajes-msg.received .mensajes-msg-bubble .mensajes-msg-time {
+  color: #667781 !important;
+}
+
+/* --- Ticks (Read Receipts) --- */
+[data-mc-theme="diamond"] .mensajes-msg-tick.read {
+  color: #53bdeb !important;
+}
+
+/* --- Input Bar --- */
+[data-mc-theme="diamond"] .mensajes-compose {
+  background: var(--diamond-panel-bg) !important;
+  border-top: none;
+  padding: 5px 10px;
+}
+
+[data-mc-theme="diamond"] .mensajes-compose-input {
+  background: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.06);
+}
+
+[data-mc-theme="diamond"] .mensajes-compose-send {
+  background: var(--diamond-green) !important;
+  color: #ffffff !important;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+}
+
+[data-mc-theme="diamond"] .mensajes-compose-send:hover {
+  background: var(--diamond-green-dark) !important;
+}
+
+/* --- Action Panel --- */
+[data-mc-theme="diamond"] .chat-action-buttons {
+  background: var(--diamond-header) !important;
+  border-left: none;
+}
+
+[data-mc-theme="diamond"] .chat-action-buttons > button,
+[data-mc-theme="diamond"] .chat-action-buttons > div > button {
+  color: #ffffff !important;
+}
+
+[data-mc-theme="diamond"] .chat-action-buttons > button:hover,
+[data-mc-theme="diamond"] .chat-action-buttons > div > button:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+/* --- Date Dividers --- */
+[data-mc-theme="diamond"] .mensajes-date-divider span {
+  background: #e2ddd5 !important;
+  color: #54656f !important;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 12px;
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+  border: none;
+}
+
+/* --- Unread Badge --- */
+[data-mc-theme="diamond"] .mensajes-chat-unread {
+  background: var(--diamond-green) !important;
+  box-shadow: none;
+}
+
+/* --- Avatars --- */
+[data-mc-theme="diamond"] .mensajes-chat-avatar-img {
+  border: none;
+  box-shadow: none;
+}
+
+/* --- Scrollbar --- */
+[data-mc-theme="diamond"] .mensajes-chat-list::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 4px;
+}
+
+[data-mc-theme="diamond"] .mensajes-chat-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- Settings / Menu Panels --- */
+[data-mc-theme="diamond"] .chat-action-settings-menu,
+[data-mc-theme="diamond"] .mensajes-settings-menu {
+  background: #ffffff !important;
+  border: 1px solid #d1d7db;
+}
+[data-mc-theme="diamond"] .chat-action-settings-menu button,
+[data-mc-theme="diamond"] .mensajes-settings-item {
+  color: #111b21 !important;
+}
+[data-mc-theme="diamond"] .chat-action-settings-menu button:hover,
+[data-mc-theme="diamond"] .mensajes-settings-item:hover {
+  background: #f0f2f5 !important;
+}
+[data-mc-theme="diamond"] .chat-action-settings-menu button.danger,
+[data-mc-theme="diamond"] .mensajes-settings-item.danger {
+  color: #ef4444 !important;
+}
+
+/* --- Empty state --- */
+[data-mc-theme="diamond"] .mensajes-empty-state {
+  color: #667781 !important;
+}
+
+/* --- Context menu (right-click) --- */
+[data-mc-theme="diamond"] .mensajes-context-menu {
+  background: #ffffff !important;
+  border: 1px solid #d1d7db;
+}
+[data-mc-theme="diamond"] .mensajes-context-menu button {
+  color: #111b21 !important;
+}
+[data-mc-theme="diamond"] .mensajes-context-menu button:hover {
+  background: #f0f2f5 !important;
+}

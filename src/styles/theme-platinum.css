@@ -1,0 +1,181 @@
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   PLATINUM UI THEME â€” Advanced Glassmorphism
+   Modern frosted-glass with depth, blur, light refractions.
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+[data-mc-theme="platinum"] .mensajes-sidebar {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+[data-mc-theme="platinum"] .mensajes-container {
+  background: linear-gradient(135deg, #e8edf5 0%, #f0f4fa 50%, #e4eaf4 100%);
+}
+
+[data-mc-theme="platinum"] .mensajes-main {
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.5) 0%, rgba(241, 245, 249, 0.8) 100%);
+}
+
+/* â”€â”€â”€ Sidebar Header â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-sidebar-header {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* â”€â”€â”€ Tabs â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-tabs {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[data-mc-theme="platinum"] .mensajes-tab.active {
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* â”€â”€â”€ Search â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-search-wrapper {
+  background: rgba(255, 255, 255, 0.55) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* â”€â”€â”€ Chat Items â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-chat-item {
+  border-radius: 12px;
+  margin: 2px 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-item:hover {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-item.active {
+  background: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  border-left: 3px solid var(--mc-blue);
+}
+
+/* â”€â”€â”€ Chat Header â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-chat-header {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
+}
+
+/* â”€â”€â”€ Messages â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-msg.sent .mensajes-msg-bubble {
+  background: linear-gradient(135deg, var(--mc-blue), var(--mc-blue-light)) !important;
+  box-shadow: 0 2px 12px rgba(29, 78, 216, 0.15);
+  border-radius: 18px 18px 4px 18px;
+}
+
+[data-mc-theme="platinum"] .mensajes-msg.received .mensajes-msg-bubble {
+  background: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+  border-radius: 18px 18px 18px 4px;
+}
+
+/* â”€â”€â”€ Input Bar â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-compose {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+[data-mc-theme="platinum"] .mensajes-compose-input {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  border-radius: 24px !important;
+}
+
+/* â”€â”€â”€ Action Panel â”€â”€â”€ */
+[data-mc-theme="platinum"] .chat-action-buttons {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06);
+}
+
+[data-mc-theme="platinum"] .chat-action-buttons > button,
+[data-mc-theme="platinum"] .chat-action-buttons > div > button {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-mc-theme="platinum"] .chat-action-buttons > button:hover,
+[data-mc-theme="platinum"] .chat-action-buttons > div > button:hover {
+  background: rgba(255, 255, 255, 0.85) !important;
+  color: var(--mc-blue) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* â”€â”€â”€ Settings Menu â”€â”€â”€ */
+[data-mc-theme="platinum"] .chat-action-settings-menu,
+[data-mc-theme="platinum"] .mensajes-settings-menu {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+[data-mc-theme="platinum"] .chat-action-settings-menu button,
+[data-mc-theme="platinum"] .mensajes-settings-item {
+  color: #1e293b !important;
+}
+[data-mc-theme="platinum"] .chat-action-settings-menu button:hover,
+[data-mc-theme="platinum"] .mensajes-settings-item:hover {
+  background: rgba(29, 78, 216, 0.06) !important;
+}
+[data-mc-theme="platinum"] .chat-action-settings-menu button.danger,
+[data-mc-theme="platinum"] .mensajes-settings-item.danger {
+  color: #ef4444 !important;
+}
+
+/* â”€â”€â”€ Avatars â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-chat-avatar-img {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+}
+
+/* â”€â”€â”€ Date Dividers â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-date-divider span {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* â”€â”€â”€ Scrollbar â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-chat-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* â”€â”€â”€ Unread Badge â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-chat-unread {
+  box-shadow: 0 1px 4px rgba(29, 78, 216, 0.2);
+}

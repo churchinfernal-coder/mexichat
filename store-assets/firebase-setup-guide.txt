@@ -1,0 +1,45 @@
+╔═══════════════════════════════════════════════╗
+║  FIREBASE SETUP GUIDE — MexiChat              ║
+╚═══════════════════════════════════════════════╝
+
+Firebase is needed for PUSH NOTIFICATIONS only.
+You can submit to Play Store without it — push
+notifications just won't work until added.
+
+STEP-BY-STEP:
+═══════════════════════════════════════════════
+
+1. Go to: https://console.firebase.google.com
+2. Click "Create a project" (or "Add project")
+3. Project name: MexiChat
+4. Disable Google Analytics (optional, not needed)
+5. Click "Create project"
+
+ADD ANDROID APP:
+6. Click the Android icon (🤖)
+7. Package name: mx.mexichat.app
+8. App nickname: MexiChat Android
+9. Skip SHA-1 for now (only needed for Google Sign-In)
+10. Click "Register app"
+11. Download google-services.json
+12. SAVE IT TO: android\app\google-services.json
+
+ADD iOS APP (for later when you have Mac):
+13. Click "Add app" → iOS icon (🍎)
+14. Bundle ID: mx.mexichat.app
+15. App nickname: MexiChat iOS
+16. Click "Register app"
+17. Download GoogleService-Info.plist
+18. SAVE IT TO: ios\App\App\GoogleService-Info.plist
+
+ENABLE CLOUD MESSAGING:
+19. In Firebase Console → Project Settings → Cloud Messaging
+20. Enable "Firebase Cloud Messaging API (V1)"
+
+DONE! Then rebuild:
+  npm run build
+  npx cap sync android
+  cd android
+  .\gradlew.bat bundleRelease
+
+The AAB will now include Firebase push support.

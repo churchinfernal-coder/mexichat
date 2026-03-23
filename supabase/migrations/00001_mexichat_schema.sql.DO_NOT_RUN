@@ -1,0 +1,729 @@
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- MexiChat — Complete Messaging Schema
+-- Run this against Supabase project (cchakgecusfybcokbmau)
+-- Idempotent: safe to re-run — drops and recreates all objects.
+-- ═══════════════════════════════════════════════════════════════════════════════
+
+-- ─── Clean Slate ─────────────────────────────────────────────────────────────
+-- Drop trigger first (depends on function which depends on profiles)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+
+-- Drop functions
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP FUNCTION IF EXISTS public.has_role(uuid, public.app_role);
+DROP FUNCTION IF EXISTS public.can_user_call(uuid, uuid);
+DROP FUNCTION IF EXISTS public.is_user_in_call(uuid);
+DROP FUNCTION IF EXISTS public.get_my_call_history(uuid, integer);
+DROP FUNCTION IF EXISTS public.get_user_group_ids(uuid);
+DROP FUNCTION IF EXISTS public.cleanup_expired_messages();
+DROP FUNCTION IF EXISTS public.log_admin_action(text, text, jsonb, text, text, jsonb);
+
+-- Drop tables (CASCADE handles FK deps)
+DROP TABLE IF EXISTS public.module_registry CASCADE;
+DROP TABLE IF EXISTS public.localization_strings CASCADE;
+DROP TABLE IF EXISTS public.system_settings CASCADE;
+DROP TABLE IF EXISTS public.telemetry_events CASCADE;
+DROP TABLE IF EXISTS public.admin_audit_logs CASCADE;
+DROP TABLE IF EXISTS public.user_devices CASCADE;
+DROP TABLE IF EXISTS public.push_subscriptions CASCADE;
+DROP TABLE IF EXISTS public.encryption_audit_logs CASCADE;
+DROP TABLE IF EXISTS public.key_recovery CASCADE;
+DROP TABLE IF EXISTS public.user_public_keys CASCADE;
+DROP TABLE IF EXISTS public.call_sessions CASCADE;
+DROP TABLE IF EXISTS public.group_read_receipts CASCADE;
+DROP TABLE IF EXISTS public.group_messages CASCADE;
+DROP TABLE IF EXISTS public.group_members CASCADE;
+DROP TABLE IF EXISTS public.groups CASCADE;
+DROP TABLE IF EXISTS public.private_messages CASCADE;
+DROP TABLE IF EXISTS public.conversations CASCADE;
+DROP TABLE IF EXISTS public.reported_users CASCADE;
+DROP TABLE IF EXISTS public.blocked_users CASCADE;
+DROP TABLE IF EXISTS public.contacts CASCADE;
+DROP TABLE IF EXISTS public.user_roles CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+
+-- Drop enums (must drop after tables that use them)
+DROP TYPE IF EXISTS public.call_end_reason;
+DROP TYPE IF EXISTS public.call_status;
+DROP TYPE IF EXISTS public.call_type;
+DROP TYPE IF EXISTS public.app_role;
+DROP TYPE IF EXISTS public.account_type;
+
+-- ─── Extensions ──────────────────────────────────────────────────────────────
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ─── Enums ───────────────────────────────────────────────────────────────────
+DO $$ BEGIN
+  CREATE TYPE public.account_type AS ENUM ('user');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.app_role AS ENUM ('admin', 'user');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.call_type AS ENUM ('audio', 'video');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.call_status AS ENUM (
+    'initiated', 'ringing', 'accepted', 'in_progress', 'on_hold',
+    'reconnecting', 'ended', 'missed', 'declined', 'busy', 'failed'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE public.call_end_reason AS ENUM (
+    'caller_hangup', 'callee_hangup', 'timeout', 'declined', 'busy',
+    'network_error', 'permission_denied', 'blocked_user', 'system'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ─── Core Tables ─────────────────────────────────────────────────────────────
+
+-- Profiles (linked to auth.users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name  text,
+  username   text UNIQUE,
+  phone      text,
+  avatar_url text,
+  account_type public.account_type NOT NULL DEFAULT 'user',
+  agency_name  text, -- legacy compat, can be removed later
+  is_online  boolean DEFAULT false,
+  last_seen  timestamptz,
+  language   text DEFAULT 'es',
+  public_key text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- User roles (admin system)
+CREATE TABLE IF NOT EXISTS public.user_roles (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  role       public.app_role NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, role)
+);
+
+-- Contacts
+CREATE TABLE IF NOT EXISTS public.contacts (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         uuid NOT NULL,
+  contact_user_id uuid NOT NULL,
+  nickname        text,
+  created_at      timestamptz DEFAULT now(),
+  UNIQUE(user_id, contact_user_id)
+);
+
+-- Blocked users
+CREATE TABLE IF NOT EXISTS public.blocked_users (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  blocker_id uuid NOT NULL,
+  blocked_id uuid NOT NULL,
+  reason     text,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(blocker_id, blocked_id)
+);
+
+-- Reported users
+CREATE TABLE IF NOT EXISTS public.reported_users (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  reporter_id uuid NOT NULL,
+  reported_id uuid NOT NULL,
+  reason      text NOT NULL,
+  details     text,
+  status      text DEFAULT 'pending',
+  created_at  timestamptz DEFAULT now()
+);
+
+-- ─── 1-on-1 Conversations ───────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.conversations (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_1          uuid NOT NULL,
+  user_2          uuid NOT NULL,
+  last_message    text,
+  last_message_at timestamptz,
+  blocked_by      uuid,
+  disappear_timer text,
+  status          text,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now(),
+  UNIQUE(user_1, user_2)
+);
+
+CREATE TABLE IF NOT EXISTS public.private_messages (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id uuid NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
+  sender_id       uuid NOT NULL,
+  content         text,
+  media_url       text,
+  media_type      text,
+  iv              text,
+  is_read         boolean DEFAULT false,
+  is_forwarded    boolean DEFAULT false,
+  reply_to        uuid REFERENCES public.private_messages(id) ON DELETE SET NULL,
+  expires_at      timestamptz,
+  created_at      timestamptz DEFAULT now()
+);
+
+-- ─── Groups ──────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.groups (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name            text NOT NULL,
+  description     text,
+  avatar_url      text,
+  created_by      uuid NOT NULL,
+  invite_code     text UNIQUE,
+  last_message    text,
+  last_message_at timestamptz,
+  disappear_timer text,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.group_members (
+  id        uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id  uuid NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
+  user_id   uuid NOT NULL,
+  role      text DEFAULT 'member',
+  joined_at timestamptz DEFAULT now(),
+  UNIQUE(group_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.group_messages (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id   uuid NOT NULL REFERENCES public.groups(id) ON DELETE CASCADE,
+  sender_id  uuid NOT NULL,
+  content    text NOT NULL,
+  media_url  text,
+  media_type text,
+  iv         text,
+  expires_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.group_read_receipts (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id     uuid REFERENCES public.groups(id) ON DELETE CASCADE,
+  user_id      uuid,
+  last_read_at timestamptz,
+  UNIQUE(group_id, user_id)
+);
+
+-- ─── Voice / Video Calls ─────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.call_sessions (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  caller_id        uuid NOT NULL,
+  callee_id        uuid NOT NULL,
+  call_type        public.call_type NOT NULL,
+  status           public.call_status NOT NULL DEFAULT 'initiated',
+  conversation_id  uuid REFERENCES public.conversations(id),
+  room_id          text,
+  initiated_at     timestamptz,
+  ringing_at       timestamptz,
+  accepted_at      timestamptz,
+  ended_at         timestamptz,
+  ended_by         uuid,
+  end_reason       public.call_end_reason,
+  duration_seconds integer,
+  metadata         jsonb,
+  created_at       timestamptz DEFAULT now(),
+  updated_at       timestamptz DEFAULT now()
+);
+
+-- ─── E2EE Keys ───────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.user_public_keys (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id        uuid NOT NULL,
+  public_key_jwk text NOT NULL,
+  fingerprint    text NOT NULL,
+  version        integer DEFAULT 1,
+  created_at     timestamptz DEFAULT now(),
+  updated_at     timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.key_recovery (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     uuid NOT NULL,
+  wrapped_key text NOT NULL,
+  iv          text NOT NULL,
+  created_at  timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.encryption_audit_logs (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid,
+  event      text NOT NULL,
+  severity   text,
+  device_id  text,
+  details    jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+-- ─── Push Notifications ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  endpoint   text NOT NULL,
+  p256dh     text NOT NULL,
+  auth       text NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, endpoint)
+);
+
+-- ─── User Devices ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.user_devices (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id           uuid NOT NULL,
+  device_id         text NOT NULL,
+  device_name       text,
+  device_type       text,
+  platform          text,
+  os_version        text,
+  screen_resolution text,
+  device_fingerprint text,
+  device_info       jsonb,
+  is_active         boolean DEFAULT true,
+  last_active       timestamptz,
+  created_at        timestamptz DEFAULT now()
+);
+
+-- ─── Admin & System ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.admin_audit_logs (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_user_id uuid NOT NULL,
+  action_type   text NOT NULL,
+  module_name   text NOT NULL,
+  entity_type   text,
+  entity_id     text,
+  changes       jsonb,
+  metadata      jsonb,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.telemetry_events (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_name text NOT NULL,
+  session_id text NOT NULL,
+  metadata   jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.system_settings (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  setting_key   text NOT NULL UNIQUE,
+  setting_value jsonb NOT NULL,
+  category      text NOT NULL,
+  description   text,
+  updated_by    uuid,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.localization_strings (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  string_key  text NOT NULL,
+  locale      text NOT NULL DEFAULT 'es',
+  translation text NOT NULL,
+  category    text,
+  updated_by  uuid,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(string_key, locale)
+);
+
+CREATE TABLE IF NOT EXISTS public.module_registry (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_key    text NOT NULL UNIQUE,
+  module_name   text NOT NULL,
+  description   text,
+  is_active     boolean DEFAULT true,
+  display_order integer,
+  permissions   jsonb,
+  settings      jsonb,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
+-- ─── Indexes ─────────────────────────────────────────────────────────────────
+
+CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON public.profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_username ON public.profiles(username);
+CREATE INDEX IF NOT EXISTS idx_profiles_phone ON public.profiles(phone);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_1 ON public.conversations(user_1);
+CREATE INDEX IF NOT EXISTS idx_conversations_user_2 ON public.conversations(user_2);
+CREATE INDEX IF NOT EXISTS idx_conversations_last_message_at ON public.conversations(last_message_at DESC);
+CREATE INDEX IF NOT EXISTS idx_private_messages_conversation_id ON public.private_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_private_messages_created_at ON public.private_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_private_messages_sender_id ON public.private_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_group_messages_group_id ON public.group_messages(group_id);
+CREATE INDEX IF NOT EXISTS idx_group_messages_created_at ON public.group_messages(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON public.group_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON public.group_members(group_id);
+CREATE INDEX IF NOT EXISTS idx_call_sessions_caller ON public.call_sessions(caller_id);
+CREATE INDEX IF NOT EXISTS idx_call_sessions_callee ON public.call_sessions(callee_id);
+CREATE INDEX IF NOT EXISTS idx_call_sessions_status ON public.call_sessions(status) WHERE status NOT IN ('ended', 'missed', 'declined', 'failed');
+CREATE INDEX IF NOT EXISTS idx_blocked_users_blocker ON public.blocked_users(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_user ON public.contacts(user_id);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON public.push_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_devices_user ON public.user_devices(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_public_keys_user ON public.user_public_keys(user_id);
+
+-- ─── Functions ───────────────────────────────────────────────────────────────
+
+-- Check if user has a specific role
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role public.app_role)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role = _role
+  );
+$$;
+
+-- Check if a user can call another (not blocked, not already in call)
+CREATE OR REPLACE FUNCTION public.can_user_call(p_caller_id uuid, p_callee_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  result jsonb;
+BEGIN
+  -- Check if blocked
+  IF EXISTS (
+    SELECT 1 FROM public.blocked_users
+    WHERE (blocker_id = p_callee_id AND blocked_id = p_caller_id)
+       OR (blocker_id = p_caller_id AND blocked_id = p_callee_id)
+  ) THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'blocked');
+  END IF;
+
+  -- Check if either user is already in an active call
+  IF EXISTS (
+    SELECT 1 FROM public.call_sessions
+    WHERE status IN ('initiated', 'ringing', 'accepted', 'in_progress', 'reconnecting')
+      AND (caller_id = p_caller_id OR callee_id = p_caller_id
+        OR caller_id = p_callee_id OR callee_id = p_callee_id)
+  ) THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'busy');
+  END IF;
+
+  RETURN jsonb_build_object('allowed', true);
+END;
+$$;
+
+-- Check if a user is currently in a call
+CREATE OR REPLACE FUNCTION public.is_user_in_call(p_user_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.call_sessions
+    WHERE status IN ('initiated', 'ringing', 'accepted', 'in_progress', 'reconnecting')
+      AND (caller_id = p_user_id OR callee_id = p_user_id)
+  );
+$$;
+
+-- Get call history for a user
+CREATE OR REPLACE FUNCTION public.get_my_call_history(p_user_id uuid, p_limit integer DEFAULT 50)
+RETURNS TABLE (
+  call_session_id uuid,
+  call_type public.call_type,
+  status public.call_status,
+  direction text,
+  other_user_id uuid,
+  other_user_name text,
+  other_user_avatar text,
+  initiated_at timestamptz,
+  duration_seconds integer,
+  end_reason public.call_end_reason
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT
+    cs.id AS call_session_id,
+    cs.call_type,
+    cs.status,
+    CASE WHEN cs.caller_id = p_user_id THEN 'outgoing' ELSE 'incoming' END AS direction,
+    CASE WHEN cs.caller_id = p_user_id THEN cs.callee_id ELSE cs.caller_id END AS other_user_id,
+    p.full_name AS other_user_name,
+    p.avatar_url AS other_user_avatar,
+    cs.initiated_at,
+    cs.duration_seconds,
+    cs.end_reason
+  FROM public.call_sessions cs
+  LEFT JOIN public.profiles p
+    ON p.user_id = CASE WHEN cs.caller_id = p_user_id THEN cs.callee_id ELSE cs.caller_id END
+  WHERE cs.caller_id = p_user_id OR cs.callee_id = p_user_id
+  ORDER BY cs.created_at DESC
+  LIMIT p_limit;
+$$;
+
+-- Get all group IDs for a user
+CREATE OR REPLACE FUNCTION public.get_user_group_ids(uid uuid)
+RETURNS uuid[]
+LANGUAGE sql STABLE
+AS $$
+  SELECT COALESCE(array_agg(group_id), '{}')
+  FROM public.group_members
+  WHERE user_id = uid;
+$$;
+
+-- Delete expired disappearing messages
+CREATE OR REPLACE FUNCTION public.cleanup_expired_messages()
+RETURNS integer
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  deleted_count integer := 0;
+  d1 integer;
+  d2 integer;
+BEGIN
+  DELETE FROM public.private_messages WHERE expires_at IS NOT NULL AND expires_at < now();
+  GET DIAGNOSTICS d1 = ROW_COUNT;
+  DELETE FROM public.group_messages WHERE expires_at IS NOT NULL AND expires_at < now();
+  GET DIAGNOSTICS d2 = ROW_COUNT;
+  deleted_count := d1 + d2;
+  RETURN deleted_count;
+END;
+$$;
+
+-- Log admin action
+CREATE OR REPLACE FUNCTION public.log_admin_action(
+  p_action_type text,
+  p_module_name text,
+  p_changes jsonb DEFAULT NULL,
+  p_entity_id text DEFAULT NULL,
+  p_entity_type text DEFAULT NULL,
+  p_metadata jsonb DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+DECLARE
+  new_id uuid;
+BEGIN
+  INSERT INTO public.admin_audit_logs (admin_user_id, action_type, module_name, changes, entity_id, entity_type, metadata)
+  VALUES (auth.uid(), p_action_type, p_module_name, p_changes, p_entity_id, p_entity_type, p_metadata)
+  RETURNING id INTO new_id;
+  RETURN new_id;
+END;
+$$;
+
+-- ─── Auto-create profile on signup (trigger) ─────────────────────────────────
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$
+BEGIN
+  INSERT INTO public.profiles (user_id, full_name, account_type)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    'user'
+  );
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ─── Row Level Security ──────────────────────────────────────────────────────
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.private_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.groups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.group_read_receipts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.call_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.blocked_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.reported_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_public_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.key_recovery ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.encryption_audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.telemetry_events ENABLE ROW LEVEL SECURITY;
+
+-- Profiles: users can read any profile, update only their own
+CREATE POLICY "profiles_select" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_update" ON public.profiles FOR UPDATE USING (auth.uid() = user_id);
+
+-- Conversations: users can see their own conversations
+CREATE POLICY "conversations_select" ON public.conversations
+  FOR SELECT USING (auth.uid() = user_1 OR auth.uid() = user_2);
+CREATE POLICY "conversations_insert" ON public.conversations
+  FOR INSERT WITH CHECK (auth.uid() = user_1 OR auth.uid() = user_2);
+CREATE POLICY "conversations_update" ON public.conversations
+  FOR UPDATE USING (auth.uid() = user_1 OR auth.uid() = user_2);
+
+-- Private messages: users can see messages in their conversations
+CREATE POLICY "pm_select" ON public.private_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      WHERE c.id = conversation_id AND (c.user_1 = auth.uid() OR c.user_2 = auth.uid())
+    )
+  );
+CREATE POLICY "pm_insert" ON public.private_messages
+  FOR INSERT WITH CHECK (auth.uid() = sender_id);
+CREATE POLICY "pm_update" ON public.private_messages
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM public.conversations c
+      WHERE c.id = conversation_id AND (c.user_1 = auth.uid() OR c.user_2 = auth.uid())
+    )
+  );
+
+-- Groups: members can see their groups
+CREATE POLICY "groups_select" ON public.groups
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.group_members gm WHERE gm.group_id = id AND gm.user_id = auth.uid())
+  );
+CREATE POLICY "groups_insert" ON public.groups
+  FOR INSERT WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "groups_update" ON public.groups
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.group_members gm WHERE gm.group_id = id AND gm.user_id = auth.uid() AND gm.role IN ('admin', 'owner'))
+  );
+
+-- Group members
+CREATE POLICY "gm_select" ON public.group_members
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.group_members gm2 WHERE gm2.group_id = group_id AND gm2.user_id = auth.uid())
+  );
+CREATE POLICY "gm_insert" ON public.group_members
+  FOR INSERT WITH CHECK (auth.uid() = user_id OR EXISTS (
+    SELECT 1 FROM public.group_members gm WHERE gm.group_id = group_id AND gm.user_id = auth.uid() AND gm.role IN ('admin', 'owner')
+  ));
+CREATE POLICY "gm_delete" ON public.group_members
+  FOR DELETE USING (auth.uid() = user_id OR EXISTS (
+    SELECT 1 FROM public.group_members gm WHERE gm.group_id = group_id AND gm.user_id = auth.uid() AND gm.role IN ('admin', 'owner')
+  ));
+
+-- Group messages
+CREATE POLICY "gmsg_select" ON public.group_messages
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM public.group_members gm WHERE gm.group_id = group_id AND gm.user_id = auth.uid())
+  );
+CREATE POLICY "gmsg_insert" ON public.group_messages
+  FOR INSERT WITH CHECK (auth.uid() = sender_id AND EXISTS (
+    SELECT 1 FROM public.group_members gm WHERE gm.group_id = group_id AND gm.user_id = auth.uid()
+  ));
+
+-- Group read receipts
+CREATE POLICY "grr_select" ON public.group_read_receipts
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "grr_upsert" ON public.group_read_receipts
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "grr_update" ON public.group_read_receipts
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Call sessions: participants can see their calls
+CREATE POLICY "calls_select" ON public.call_sessions
+  FOR SELECT USING (auth.uid() = caller_id OR auth.uid() = callee_id);
+CREATE POLICY "calls_insert" ON public.call_sessions
+  FOR INSERT WITH CHECK (auth.uid() = caller_id);
+CREATE POLICY "calls_update" ON public.call_sessions
+  FOR UPDATE USING (auth.uid() = caller_id OR auth.uid() = callee_id);
+
+-- Contacts: own contacts only
+CREATE POLICY "contacts_select" ON public.contacts FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "contacts_insert" ON public.contacts FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "contacts_delete" ON public.contacts FOR DELETE USING (auth.uid() = user_id);
+
+-- Blocked users: own blocks only
+CREATE POLICY "blocked_select" ON public.blocked_users FOR SELECT USING (auth.uid() = blocker_id);
+CREATE POLICY "blocked_insert" ON public.blocked_users FOR INSERT WITH CHECK (auth.uid() = blocker_id);
+CREATE POLICY "blocked_delete" ON public.blocked_users FOR DELETE USING (auth.uid() = blocker_id);
+
+-- Reported users: own reports only
+CREATE POLICY "reported_insert" ON public.reported_users FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+CREATE POLICY "reported_select" ON public.reported_users FOR SELECT USING (auth.uid() = reporter_id OR public.has_role(auth.uid(), 'admin'));
+
+-- Push subscriptions: own only
+CREATE POLICY "push_select" ON public.push_subscriptions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "push_insert" ON public.push_subscriptions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "push_update" ON public.push_subscriptions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "push_delete" ON public.push_subscriptions FOR DELETE USING (auth.uid() = user_id);
+
+-- User devices: own only
+CREATE POLICY "devices_select" ON public.user_devices FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "devices_insert" ON public.user_devices FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "devices_update" ON public.user_devices FOR UPDATE USING (auth.uid() = user_id);
+
+-- E2EE public keys: anyone can read, own user can write
+CREATE POLICY "pubkeys_select" ON public.user_public_keys FOR SELECT USING (true);
+CREATE POLICY "pubkeys_insert" ON public.user_public_keys FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "pubkeys_update" ON public.user_public_keys FOR UPDATE USING (auth.uid() = user_id);
+
+-- Key recovery: own only
+CREATE POLICY "keyrecovery_select" ON public.key_recovery FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "keyrecovery_insert" ON public.key_recovery FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Encryption audit: own only (admins via has_role)
+CREATE POLICY "encaudit_insert" ON public.encryption_audit_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "encaudit_select" ON public.encryption_audit_logs FOR SELECT USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
+
+-- User roles: read own, admin can read all
+CREATE POLICY "roles_select" ON public.user_roles FOR SELECT USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
+
+-- Telemetry: insert only (anonymous-ish)
+CREATE POLICY "telemetry_insert" ON public.telemetry_events FOR INSERT WITH CHECK (true);
+
+-- ─── Realtime ────────────────────────────────────────────────────────────────
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.private_messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.group_messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.call_sessions;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.group_members;
+
+-- ─── Storage Buckets ─────────────────────────────────────────────────────────
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES
+  ('avatars', 'avatars', true, 5242880, ARRAY['image/jpeg','image/png','image/webp','image/gif']),
+  ('chat-media', 'chat-media', false, 52428800, ARRAY['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','audio/webm','audio/ogg','audio/mp4']),
+  ('group-avatars', 'group-avatars', true, 5242880, ARRAY['image/jpeg','image/png','image/webp'])
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage policies: avatars (public read, own write)
+CREATE POLICY "avatars_read" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+CREATE POLICY "avatars_write" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+CREATE POLICY "avatars_update" ON storage.objects FOR UPDATE USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Storage policies: chat-media (participants only)
+CREATE POLICY "chatmedia_insert" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'chat-media' AND auth.role() = 'authenticated');
+CREATE POLICY "chatmedia_select" ON storage.objects FOR SELECT USING (bucket_id = 'chat-media' AND auth.role() = 'authenticated');
+
+-- Storage policies: group-avatars
+CREATE POLICY "groupavatars_read" ON storage.objects FOR SELECT USING (bucket_id = 'group-avatars');
+CREATE POLICY "groupavatars_write" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'group-avatars' AND auth.role() = 'authenticated');

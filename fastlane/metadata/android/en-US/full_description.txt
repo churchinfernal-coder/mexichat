@@ -1,0 +1,51 @@
+﻿MexiChat is the messaging app designed for Mexico. Fast, secure, and complete communication with everything you need:
+
+PRIVATE MESSAGING
+- Real-time text messaging
+- Share photos, videos, and files
+- Voice messages
+- Emoji reactions
+- Starred and pinned messages
+- Read and typing indicators
+
+VOICE AND VIDEO CALLS
+- HD voice calls
+- High-quality video calls
+- Works on mobile data or WiFi
+- Incoming call notifications even when the app is closed
+
+GROUPS
+- Create groups with up to 256 members
+- Role and permission management
+- Real-time group messaging
+- Link-based invitations
+
+MEXIVANZA COMMUNITY
+- Social feed with text, photo, and video posts
+- MexiMart: buy and sell products within the community
+- MexiTube: share short videos with the community
+- Customizable user profiles
+
+INTEGRATED PAYMENTS
+- Send and receive money directly in chat
+- Mercado Pago integration
+- OXXO cash payments with reference
+- PayPal available
+- Complete transaction history
+
+SECURITY AND PRIVACY
+- Message encryption
+- Age verification (13+)
+- User reporting and blocking system
+- Automatic content moderation
+- NCMEC compliance for child safety
+- Accessible privacy policy and terms of service
+
+PERFORMANCE
+- Ultra-lightweight app (3 MB)
+- Works offline with automatic reconnection
+- Compatible with Android 7.0+
+- Real-time push notifications
+- PWA installable in browser
+
+Made in Mexico, for Mexico. Download MexiChat and connect with your people.

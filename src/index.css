@@ -1,0 +1,440 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* ============================================
+       PRIMARY COLORS - White
+       ============================================ */
+    --primary: 0 0% 100%; /* White */
+    --primary-foreground: 0 0% 0%; /* Black text */
+    --primary-dark: 0 0% 90%; /* Light Gray */
+    
+    /* ============================================
+       BACKGROUND - Light Gray
+       ============================================ */
+    --background: 0 0% 96%; /* Light Gray #F5F5F5 */
+    --foreground: 0 0% 0%; /* Black */
+    
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 0 0% 0%; /* Black */
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%; /* Black */
+    
+    --secondary: 0 0% 13%; /* Black/Dark Gray */
+    --secondary-foreground: 0 0% 100%; /* White text */
+    
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 45%;
+    
+    /* ============================================
+       ACCENT COLORS
+       ============================================ */
+    --accent-pink: 340 82% 52%; /* Hot Pink */
+    --accent-pink-dark: 340 82% 42%;
+    --accent-gold: 0 0% 100%; /* White */
+    --accent-gold-dark: 0 0% 90%;
+    --accent-red: 348 83% 47%; /* Crimson for VIP */
+    --accent-red-dark: 0 70% 40%;
+    
+    --accent: 348 83% 47%; /* Red */
+    --accent-foreground: 0 0% 100%;
+    
+    /* ============================================
+       TEXT COLORS
+       ============================================ */
+    --text-primary: 0 0% 0%; /* Black */
+    --text-secondary: 0 0% 0%; /* Black */
+    --text-heading: 0 0% 0%; /* Black */
+    --text-muted: 0 0% 30%;
+    
+    /* ============================================
+       STATUS COLORS
+       ============================================ */
+    --status-online: 142 71% 45%;
+    --status-offline: 354 70% 54%;
+    --status-warning: 45 100% 51%;
+    --status-info: 211 100% 50%;
+    
+    --destructive: 354 70% 54%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* ============================================
+       VIP STYLING - Red Ribbons
+       ============================================ */
+    --vip-gradient-start: 348 83% 47%;
+    --vip-gradient-end: 0 70% 40%;
+    --vip-border: 348 83% 47%;
+    --vip-glow: 348 83% 47%;
+    --vip-text: 0 0% 100%;
+    
+    /* ============================================
+       BORDERS & INPUTS
+       ============================================ */
+    --border: 0 0% 0%; /* Black */
+    --input: 0 0% 100%;
+    --ring: 0 0% 0%; /* Black focus */
+    
+    --radius: 0.5rem;
+    
+    /* ============================================
+       SIDEBAR/NAVBAR - Black
+       ============================================ */
+    --sidebar-background: 0 0% 13%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%; /* White */
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 25%;
+    --sidebar-ring: 348 83% 47%;
+    
+    /* ============================================
+       GRADIENTS
+       ============================================ */
+    --gradient-vip: linear-gradient(135deg, hsl(348, 83%, 47%) 0%, hsl(0, 70%, 40%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(0, 0%, 13%) 0%, hsl(0, 0%, 20%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 98%) 100%);
+    --gradient-pink: linear-gradient(135deg, hsl(340, 82%, 52%) 0%, hsl(340, 82%, 42%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 95%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(0, 0%, 100%) 0%, hsl(0, 0%, 98%) 50%, hsl(0, 0%, 95%) 100%);
+    
+    /* ============================================
+       SHADOWS
+       ============================================ */
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.15);
+    --shadow-vip: 0 4px 16px rgba(220, 20, 60, 0.2);
+    --shadow-crimson: 0 4px 16px rgba(220, 20, 60, 0.15);
+    
+    /* ============================================
+       TRANSITIONS
+       ============================================ */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  /* ============================================
+     DARK MODE VARIANT - Mobile Optimized
+     ============================================ */
+  .dark {
+    --background: 0 0% 7%; /* #121212 */
+    --foreground: 0 0% 88%; /* #E0E0E0 */
+    
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 88%;
+    
+    --popover: 0 0% 9%;
+    --popover-foreground: 0 0% 88%;
+    
+    --primary: 240 21% 20%; /* Lighter midnight blue */
+    --primary-foreground: 0 0% 100%;
+    --primary-dark: 0 0% 5%;
+    
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 88%;
+    
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 65%;
+    
+    --accent: 340 100% 63%; /* Hot Pink #FF4081 for dark mode */
+    --accent-foreground: 0 0% 100%;
+    
+    --accent-gold: 217 91% 48%; /* Blue #1d4ed8 */
+    --accent-gold-dark: 221 83% 46%;
+    --accent-crimson: 348 83% 55%;
+    --accent-pink: 340 100% 63%;
+    
+    --text-primary: 0 0% 88%;
+    --text-secondary: 0 0% 65%;
+    --text-heading: 0 0% 95%;
+    --text-muted: 0 0% 50%;
+    
+    --status-online: 142 71% 50%;
+    --status-offline: 354 70% 60%;
+    --status-warning: 45 100% 55%;
+    --status-info: 211 100% 55%;
+    
+    --destructive: 354 70% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 0 0% 20%;
+    --input: 0 0% 15%;
+    --ring: 340 100% 63%;
+    
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 88%;
+    --sidebar-primary: 217 91% 48%; /* Blue */
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 88%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 340 100% 63%;
+    
+    --gradient-vip: linear-gradient(135deg, hsl(217, 91%, 48%) 0%, hsl(221, 83%, 46%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(240, 21%, 20%) 0%, hsl(0, 0%, 7%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0, 0%, 11%) 0%, hsl(0, 0%, 9%) 100%);
+    --gradient-crimson: linear-gradient(135deg, hsl(348, 83%, 55%) 0%, hsl(0, 70%, 45%) 100%);
+    --gradient-pink: linear-gradient(135deg, hsl(340, 100%, 63%) 0%, hsl(340, 100%, 55%) 100%);
+    --gradient-gold-shine: linear-gradient(135deg, hsl(217, 91%, 48%) 0%, hsl(221, 83%, 53%) 50%, hsl(221, 83%, 46%) 100%);
+    
+    --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-vip: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-crimson: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* ============================================
+   THEME UTILITY CLASSES
+   ============================================ */
+@layer utilities {
+  /* VIP Corner Ribbon Tag */
+  .vip-ribbon {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 120px;
+    height: 120px;
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  .vip-ribbon::before {
+    content: 'VIP';
+    position: absolute;
+    top: 22px;
+    right: -28px;
+    width: 150px;
+    text-align: center;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: white;
+    background: linear-gradient(135deg, hsl(348, 83%, 47%) 0%, hsl(0, 70%, 40%) 100%);
+    transform: rotate(45deg);
+    box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+    padding: 8px 0;
+  }
+
+  .vip-ribbon::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 60px 60px 0;
+    border-color: transparent hsl(348, 83%, 47%) transparent transparent;
+    filter: brightness(0.9);
+  }
+
+  /* VIP Corner Ribbon - Left Variant */
+  .vip-ribbon-left {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 120px;
+    height: 120px;
+    overflow: hidden;
+    z-index: 10;
+  }
+
+  .vip-ribbon-left::before {
+    content: 'VIP';
+    position: absolute;
+    top: 22px;
+    left: -28px;
+    width: 150px;
+    text-align: center;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: white;
+    background: linear-gradient(135deg, hsl(348, 83%, 47%) 0%, hsl(0, 70%, 40%) 100%);
+    transform: rotate(-45deg);
+    box-shadow: 0 4px 12px rgba(220, 20, 60, 0.3);
+    padding: 8px 0;
+  }
+
+  .vip-ribbon-left::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 60px 60px 0 0;
+    border-color: hsl(348, 83%, 47%) transparent transparent transparent;
+    filter: brightness(0.9);
+  }
+
+  /* VIP Styling - Alternative Badges */
+  .vip-badge {
+    @apply bg-gradient-to-r from-[hsl(var(--accent-pink))] to-[hsl(var(--accent-pink-dark))];
+    @apply text-[hsl(var(--vip-text))] font-bold px-3 py-1 rounded-full text-xs;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    border: 2px solid hsl(var(--vip-border));
+  }
+
+  .vip-card {
+    @apply border-2 shadow-card relative overflow-hidden;
+    border-color: hsl(var(--vip-border));
+  }
+
+  .vip-card::before {
+    content: '';
+    @apply absolute top-0 left-0 right-0 h-1;
+    background: var(--gradient-vip);
+  }
+
+  /* Status Indicators with Icons for Accessibility */
+  .status-online {
+    @apply bg-[hsl(var(--status-online))] text-white px-2 py-1 rounded text-xs font-medium;
+  }
+
+  .status-offline {
+    @apply bg-[hsl(var(--status-offline))] text-white px-2 py-1 rounded text-xs font-medium;
+  }
+
+  .status-warning {
+    @apply bg-[hsl(var(--status-warning))] text-[hsl(var(--text-heading))] px-2 py-1 rounded text-xs font-medium;
+  }
+
+  .status-info {
+    @apply bg-[hsl(var(--status-info))] text-white px-2 py-1 rounded text-xs font-medium;
+  }
+
+  /* Text Gradients */
+  .text-gradient-vip {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-vip);
+  }
+
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-blue-700 via-blue-500 to-blue-700 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-crimson {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-crimson);
+  }
+
+  .text-gradient-red {
+    @apply bg-gradient-to-r from-red-600 via-red-500 to-red-700 bg-clip-text text-transparent;
+  }
+
+  /* Accessibility - WCAG AA Compliant */
+  .text-accessible-primary {
+    color: hsl(var(--text-primary));
+    /* Contrast ratio: 12.63:1 (AAA) */
+  }
+
+  .text-accessible-secondary {
+    color: hsl(var(--text-secondary));
+    /* Contrast ratio: 7.23:1 (AA) */
+  }
+
+  /* Hover Effects */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated;
+  }
+
+  .hover-glow-vip {
+    @apply transition-all duration-300 hover:shadow-card;
+  }
+
+  .hover-glow-crimson {
+    @apply transition-all duration-300 hover:shadow-card;
+  }
+
+  .glow-red {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .glow-gold {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  /* Card Variants */
+  .luxury-card {
+    @apply bg-gradient-to-br from-card to-background rounded-lg shadow-card;
+    @apply border border-border backdrop-blur-sm;
+  }
+
+  .futuristic-card {
+    @apply bg-card rounded-lg border border-border shadow-card backdrop-blur-sm;
+  }
+
+  .border-gradient {
+    position: relative;
+    background: linear-gradient(var(--background), var(--background)) padding-box,
+                var(--gradient-vip) border-box;
+    border: 2px solid transparent;
+  }
+}
+
+/* Mobile-First Responsive Typography */
+@layer base {
+  h1 {
+    @apply text-3xl font-bold tracking-tight;
+    @apply md:text-4xl lg:text-5xl;
+  }
+
+  h2 {
+    @apply text-2xl font-bold tracking-tight;
+    @apply md:text-3xl lg:text-4xl;
+  }
+
+  h3 {
+    @apply text-xl font-semibold tracking-tight;
+    @apply md:text-2xl lg:text-3xl;
+  }
+
+  h4 {
+    @apply text-lg font-semibold;
+    @apply md:text-xl lg:text-2xl;
+  }
+
+  p {
+    @apply text-sm leading-relaxed;
+    @apply md:text-base;
+  }
+}
+/* Hide scrollbar for horizontal scroll areas */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+/* Fix pills horizontal scroll on mobile */
+.container {
+  overflow-x: visible !important;
+}
+/* Scroll hint fade for horizontal pill rows */
+.scroll-fade-right {
+  position: relative;
+}
+.scroll-fade-right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 3rem;
+  background: linear-gradient(to right, transparent, hsl(var(--background)));
+  pointer-events: none;
+  z-index: 1;
+}

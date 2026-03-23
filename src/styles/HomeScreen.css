@@ -1,0 +1,283 @@
+/**
+ * MEXICHAT — HomeScreen styles
+ * Big centered icons, blue glassmorphism, shades of blue
+ */
+
+.home-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(170deg, #dbeafe 0%, #e8f0fe 25%, #f0f5ff 50%, #e0eaff 75%, #dbeafe 100%);
+  padding: 24px 20px;
+  gap: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+}
+
+/* Blue glass orbs for depth */
+.home-screen::before,
+.home-screen::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.home-screen::before {
+  width: 350px;
+  height: 350px;
+  background: rgba(96, 165, 250, 0.25);
+  top: -80px;
+  right: -100px;
+}
+
+.home-screen::after {
+  width: 280px;
+  height: 280px;
+  background: rgba(129, 140, 248, 0.2);
+  bottom: -60px;
+  left: -80px;
+}
+
+.home-screen > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-screen-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 40px;
+  text-align: center;
+}
+
+@media (min-height: 700px) {
+  .home-screen-title {
+    font-size: 2.6rem;
+    margin-bottom: 52px;
+  }
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 40px;
+  justify-items: center;
+}
+
+@media (min-width: 400px) {
+  .home-grid {
+    gap: 28px;
+    max-width: 360px;
+  }
+}
+
+@media (min-height: 700px) {
+  .home-grid {
+    gap: 32px;
+    margin-bottom: 52px;
+  }
+}
+
+/* — Tile: no background, just icon centered — */
+.home-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 150px;
+  background: none;
+  border: none;
+  padding: 0;
+  transition: transform 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+.home-tile:not(:disabled):active {
+  transform: scale(0.9);
+}
+
+.home-tile:not(:disabled):hover {
+  transform: translateY(-3px) scale(1.04);
+}
+
+/* — Icon — big, centered, with blue glow — */
+.home-tile-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 130px;
+  height: 130px;
+  padding: 0;
+}
+
+@media (min-width: 400px) {
+  .home-tile-icon {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (min-height: 700px) {
+  .home-tile-icon {
+    width: 150px;
+    height: 150px;
+  }
+}
+
+.home-tile-icon img,
+.home-tile-icon svg {
+  width: 100%;
+  height: 100%;
+  border-radius: 30px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 6px 20px rgba(37, 99, 235, 0.2));
+}
+
+/* — Label — */
+.home-tile-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin-top: 12px;
+  letter-spacing: 0.02em;
+}
+
+@media (min-height: 700px) {
+  .home-tile-label {
+    font-size: 16px;
+    margin-top: 14px;
+  }
+}
+
+/* — Badge — */
+.home-tile-badge {
+  position: absolute;
+  top: -6px;
+  right: 0px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.4);
+  animation: badge-pulse 2s ease-in-out infinite;
+  z-index: 2;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* — Settings: blue glass circle — */
+.home-settings-btn {
+  background: rgba(219, 234, 254, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  cursor: pointer;
+  padding: 14px;
+  border-radius: 50%;
+  transition: transform 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.08);
+}
+
+.home-settings-btn:hover {
+  background: rgba(191, 219, 254, 0.6);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.15);
+}
+
+.home-settings-btn:active {
+  transform: scale(0.85) rotate(-15deg);
+}
+
+.home-settings-btn svg {
+  stroke: #1e40af;
+}
+/* ─── Language Toggle ─── */
+.home-lang-toggle {
+  position: absolute;
+  top: max(env(safe-area-inset-top, 12px), 12px);
+  right: 16px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.06);
+  z-index: 10;
+}
+
+.home-lang-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+}
+
+.home-lang-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  box-shadow: 0 0 0 1.5px rgba(59, 130, 246, 0.3);
+  transform: scale(1.08);
+}
+
+.home-lang-btn:not(.active):hover {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.home-lang-btn:active {
+  transform: scale(0.9);
+}
+
+.home-lang-flag {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (max-width: 360px) {
+  .home-lang-btn {
+    width: 30px;
+    height: 30px;
+  }
+  .home-lang-flag {
+    font-size: 16px;
+  }
+}

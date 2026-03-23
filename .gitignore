@@ -1,0 +1,69 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Supabase temp
+supabase/.temp/
+
+# Android signing secrets
+android/gradle.properties
+android/local.properties
+*.keystore
+*.jks
+
+# ─── Security: Never commit secrets ───
+.env
+.env.local
+.env.production
+.env.*.local
+*.pem
+*.key
+*.cert
+*.p12
+*.jks
+*.keystore
+
+# ─── Build artifacts ───
+dist/
+build/
+.cache/
+
+# ─── IDE ───
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+
+# ─── Logs ───
+*.log
+npm-debug.log*
