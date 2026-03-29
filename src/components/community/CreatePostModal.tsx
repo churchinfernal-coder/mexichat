@@ -50,7 +50,7 @@ const CreatePostModal: React.FC<Props> = ({ open, onClose, onSuccess }) => {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="¿Qué está pasando?" maxLength={2000}
+          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="?Qué está pasando?" maxLength={2000}
             className="w-full resize-none text-base text-gray-900 placeholder-gray-400 outline-none min-h-[120px] bg-transparent" autoFocus />
           {previews.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mt-2">

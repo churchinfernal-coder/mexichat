@@ -51,19 +51,19 @@ const Landing: React.FC = () => {
   return (
     <>
       <Helmet>
-        <title>MexiChat - MensajerÃƒÆ’Ã‚Â­a Privada y Segura | Chat, Llamadas, Comunidad</title>
-        <meta name="description" content="MexiChat: La app de mensajerÃƒÆ’Ã‚Â­a privada de MÃƒÆ’Ã‚Â©xico para el mundo. Chat cifrado, llamadas de voz y video HD, grupos, pagos seguros y comunidad MexiVanza. Descarga gratis para Android, iOS y Web." />
-        <meta name="keywords" content="mexichat, mensajerÃƒÆ’Ã‚Â­a segura, chat privado, llamadas gratis, video llamadas HD, mensajerÃƒÆ’Ã‚Â­a cifrada, chat mexico, app mexicana, mexivanza, comunidad mexicana, pagos mÃƒÆ’Ã‚Â³viles, chat encriptado, alternativa whatsapp" />
+        <title>MexiChat - Mensajería Privada y Segura | Chat, Llamadas, Comunidad</title>
+        <meta name="description" content="MexiChat: La app de mensajería privada de México para el mundo. Chat cifrado, llamadas de voz y video HD, grupos, pagos seguros y comunidad MexiVanza. Descarga gratis para Android, iOS y Web." />
+        <meta name="keywords" content="mexichat, mensajería segura, chat privado, llamadas gratis, videollamadas HD, mensajería cifrada, chat mexico, app mexicana, mexivanza, comunidad mexicana, pagos móviles, chat encriptado, alternativa whatsapp" />
         <link rel="canonical" href="https://mexichat.app" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://mexichat.app" />
-        <meta property="og:title" content="MexiChat - MensajerÃƒÆ’Ã‚Â­a Privada y Segura" />
-        <meta property="og:description" content="Chat cifrado de extremo a extremo, llamadas HD, grupos y comunidad. La mensajerÃƒÆ’Ã‚Â­a de MÃƒÆ’Ã‚Â©xico para el mundo." />
+        <meta property="og:title" content="MexiChat - Mensajería Privada y Segura" />
+        <meta property="og:description" content="Chat cifrado de extremo a extremo, llamadas HD, grupos y comunidad. La mensajería de México para el mundo." />
         <meta property="og:image" content="https://mexichat.app/web-app-manifest-512x512.png" />
         <meta property="og:locale" content="es_MX" />
         <meta property="og:site_name" content="MexiChat" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="MexiChat - MensajerÃƒÆ’Ã‚Â­a Privada y Segura" />
+        <meta name="twitter:title" content="MexiChat - Mensajería Privada y Segura" />
         <meta name="twitter:description" content="Chat cifrado, llamadas HD, comunidad MexiVanza. Descarga gratis." />
         <meta name="twitter:image" content="https://mexichat.app/web-app-manifest-512x512.png" />
         <script type="application/ld+json">{JSON.stringify({
@@ -74,7 +74,7 @@ const Landing: React.FC = () => {
           "applicationCategory": "CommunicationApplication",
           "offers": { "@type": "Offer", "price": "0", "priceCurrency": "MXN" },
           "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "ratingCount": "1200" },
-          "description": "MensajerÃƒÆ’Ã‚Â­a privada y segura con cifrado de extremo a extremo. Llamadas de voz y video HD, grupos, pagos y comunidad.",
+          "description": "Mensajería privada y segura con cifrado de extremo a extremo. Llamadas de voz y video HD, grupos, pagos y comunidad.",
           "url": "https://mexichat.app",
           "downloadUrl": "https://mexichat.app/#download",
           "screenshot": "https://mexichat.app/web-app-manifest-512x512.png",
@@ -83,7 +83,7 @@ const Landing: React.FC = () => {
       </Helmet>
 
       <div className="landing">
-        {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ NAV ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
+        {/* -- NAV -- */}
         <nav className={`landing-nav ${visible ? 'visible' : ''}`} role="navigation" aria-label="Main navigation">
           <div className="landing-nav-inner">
             <div className="landing-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -110,10 +110,10 @@ const Landing: React.FC = () => {
           </div>
         </nav>
 
-        {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ HERO ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
+        {/* -- HERO -- */}
         <header className={`landing-hero ${visible ? 'visible' : ''}`}>
           <div className="landing-hero-content">
-            <div className="landing-hero-badge">ÃƒÂ°Ã…Â¸Ã¢â‚¬Â¡Ã‚Â²ÃƒÂ°Ã…Â¸Ã¢â‚¬Â¡Ã‚Â½ Hecho en MÃƒÆ’Ã‚Â©xico para el mundo</div>
+            <div className="landing-hero-badge">{'\u{1F1F2}\u{1F1FD}'} Hecho en México para el mundo</div>
             <h1>
               <span className="landing-hero-line1">{t.landing.hero.line1}</span>
               <span className="landing-hero-line2">{t.landing.hero.line2}</span>
@@ -152,55 +152,55 @@ const Landing: React.FC = () => {
                   {/* CHAT MOCKUP */}
                   <div className="mock-chat">
                     <div className="mock-chat-header">
-                      <div className="mock-back">ÃƒÂ¢Ã¢â‚¬Â Ã‚Â</div>
+                      <div className="mock-back">{'\u2190'}</div>
                       <div className="mock-avatar-sm blue">M</div>
                       <div className="mock-header-info">
-                        <span className="mock-header-name">MarÃƒÆ’Ã‚Â­a GarcÃƒÆ’Ã‚Â­a</span>
-                        <span className="mock-header-status">en lÃƒÆ’Ã‚Â­nea</span>
+                        <span className="mock-header-name">María García</span>
+                        <span className="mock-header-status">en línea</span>
                       </div>
                       <div className="mock-header-icons">
-                        <span>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â¾</span>
-                        <span>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¹</span>
+                        <span>{'\u{1F4DE}'}</span>
+                        <span>{'\u{1F4F9}'}</span>
                       </div>
                     </div>
                     <div className="mock-chat-body">
                       <div className="mock-date-pill">{t.landing.mockChat.today}</div>
                       <div className="mock-bubble received">
-                        <p>Hola! Ya llegaste? ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ¢â‚¬Â¹</p>
+                        <p>Hola! Ya llegaste? {'\u{1F44B}'}</p>
                         <span className="mock-time">10:30</span>
                       </div>
                       <div className="mock-bubble sent">
-                        <p>SÃƒÆ’Ã‚Â­! Acabo de llegar al aeropuerto ÃƒÂ¢Ã…â€œÃ‹â€ ÃƒÂ¯Ã‚Â¸Ã‚Â</p>
-                        <span className="mock-time">10:31 ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“</span>
+                        <p>Sí! Acabo de llegar al aeropuerto {'\u2708\uFE0F'}</p>
+                        <span className="mock-time">10:31 {'\u2713\u2713'}</span>
                       </div>
                       <div className="mock-bubble received">
-                        <p>QuÃƒÆ’Ã‚Â© emociÃƒÆ’Ã‚Â³n!! ÃƒÂ°Ã…Â¸Ã…Â½Ã¢â‚¬Â° Te mando mi ubicaciÃƒÆ’Ã‚Â³n</p>
+                        <p>Qué emoción!! {'\u{1F389}'} Te mando mi ubicación</p>
                         <span className="mock-time">10:31</span>
                       </div>
                       <div className="mock-bubble received">
                         <div className="mock-location">
-                          <div className="mock-map">ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â</div>
-                          <span>UbicaciÃƒÆ’Ã‚Â³n compartida</span>
+                          <div className="mock-map">{'\u{1F4CD}'}</div>
+                          <span>Ubicación compartida</span>
                         </div>
                         <span className="mock-time">10:32</span>
                       </div>
                       <div className="mock-bubble sent">
-                        <p>Perfecto! Ya voy para allÃƒÆ’Ã‚Â¡ ÃƒÂ°Ã…Â¸Ã…Â¡Ã¢â‚¬â€ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â¨</p>
-                        <span className="mock-time">10:33 ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“</span>
+                        <p>Perfecto! Ya voy para allá {'\u{1F697}\u{1F4A8}'}</p>
+                        <span className="mock-time">10:33 {'\u2713\u2713'}</span>
                       </div>
                       <div className="mock-bubble sent">
                         <div className="mock-voice">
-                          <span>ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¤</span>
+                          <span>{'\u{1F3A4}'}</span>
                           <div className="mock-voice-wave" />
                           <span>0:12</span>
                         </div>
-                        <span className="mock-time">10:34 ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“</span>
+                        <span className="mock-time">10:34 {'\u2713\u2713'}</span>
                       </div>
                     </div>
                     <div className="mock-chat-input">
-                      <span>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â½</span>
+                      <span>{'\u{1F4CE}'}</span>
                       <div className="mock-input-field">{t.landing.mockChat.message}</div>
-                      <div className="mock-send-btn">ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢</div>
+                      <div className="mock-send-btn">{'\u27A1\uFE0F'}</div>
                     </div>
                   </div>
                 </div>
@@ -209,11 +209,11 @@ const Landing: React.FC = () => {
           </div>
         </header>
 
-        {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ APP SCREENS SHOWCASE ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
+        {/* -- APP SCREENS SHOWCASE -- */}
         <section id="screens" className={`landing-screens ${isVisible('screens') ? 'visible' : ''}`} data-animate>
           <h2>{t.landing.screens.title}</h2>
           <p className="landing-screens-sub">{t.landing.screens.subtitle}</p>
-          
+
           <div className="landing-screens-grid">
             {/* Screen 1: Home */}
             <div className="landing-screen-card">
@@ -225,23 +225,23 @@ const Landing: React.FC = () => {
                       <div className="mock-home-title">Mexi<strong>Chat</strong></div>
                       <div className="mock-home-grid">
                         <div className="mock-home-icon">
-                          <div className="mock-icon-circle blue">ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â¬</div>
+                          <div className="mock-icon-circle blue">{'\u{1F4AC}'}</div>
                           <span>Chats</span>
                         </div>
                         <div className="mock-home-icon">
-                          <div className="mock-icon-circle blue">ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‚Â¥</div>
+                          <div className="mock-icon-circle blue">{'\u{1F465}'}</div>
                           <span>Grupos</span>
                         </div>
                         <div className="mock-home-icon">
-                          <div className="mock-icon-circle green">ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â²</div>
+                          <div className="mock-icon-circle green">{'\u{1F4B2}'}</div>
                           <span>Pagos</span>
                         </div>
                         <div className="mock-home-icon">
-                          <div className="mock-icon-circle purple">ÃƒÂ°Ã…Â¸Ã…â€™Ã…Â½</div>
+                          <div className="mock-icon-circle purple">{'\u{1F30E}'}</div>
                           <span>{t.landing.footer.community}</span>
                         </div>
                       </div>
-                      <div className="mock-home-settings">ÃƒÂ¢Ã…Â¡Ã¢â€žÂ¢ÃƒÂ¯Ã‚Â¸Ã‚Â</div>
+                      <div className="mock-home-settings">{'\u2699\uFE0F'}</div>
                     </div>
                   </div>
                 </div>
@@ -259,14 +259,14 @@ const Landing: React.FC = () => {
                     <div className="mock-chatlist">
                       <div className="mock-chatlist-header">
                         <span className="mock-chatlist-title">{t.home.chats}</span>
-                        <span>ÃƒÂ¢Ã…â€œÃ‚ÂÃƒÂ¯Ã‚Â¸Ã‚Â</span>
+                        <span>{'\u270F\uFE0F'}</span>
                       </div>
-                      <div className="mock-chatlist-search">ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â Buscar...</div>
+                      <div className="mock-chatlist-search">{'\u{1F50D}'} Buscar...</div>
                       <div className="mock-chatlist-item">
                         <div className="mock-avatar-sm green">A</div>
                         <div className="mock-chatlist-info">
-                          <div className="mock-chatlist-row"><strong>Ana LÃƒÆ’Ã‚Â³pez</strong><span>12:45</span></div>
-                          <span className="mock-preview">Nos vemos maÃƒÆ’Ã‚Â±ana! ÃƒÂ°Ã…Â¸Ã…Â½Ã¢â‚¬Â°</span>
+                          <div className="mock-chatlist-row"><strong>Ana López</strong><span>12:45</span></div>
+                          <span className="mock-preview">Nos vemos mañana! {'\u{1F389}'}</span>
                         </div>
                         <div className="mock-unread">3</div>
                       </div>
@@ -274,14 +274,14 @@ const Landing: React.FC = () => {
                         <div className="mock-avatar-sm blue">C</div>
                         <div className="mock-chatlist-info">
                           <div className="mock-chatlist-row"><strong>Carlos Ruiz</strong><span>11:20</span></div>
-                          <span className="mock-preview">Te enviÃƒÆ’Ã‚Â© el archivo ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Å¾</span>
+                          <span className="mock-preview">Te envié el archivo {'\u{1F4CE}'}</span>
                         </div>
                       </div>
                       <div className="mock-chatlist-item">
                         <div className="mock-avatar-sm orange">F</div>
                         <div className="mock-chatlist-info">
                           <div className="mock-chatlist-row"><strong>Familia CDMX</strong><span>ayer</span></div>
-                          <span className="mock-preview">MamÃƒÆ’Ã‚Â¡: Los espero a las 3</span>
+                          <span className="mock-preview">Mamá: Los espero a las 3</span>
                         </div>
                         <div className="mock-unread">12</div>
                       </div>
@@ -289,7 +289,7 @@ const Landing: React.FC = () => {
                         <div className="mock-avatar-sm purple">D</div>
                         <div className="mock-chatlist-info">
                           <div className="mock-chatlist-row"><strong>Diego M.</strong><span>ayer</span></div>
-                          <span className="mock-preview">ÃƒÂ°Ã…Â¸Ã…Â½Ã‚Â¤ Nota de voz (0:24)</span>
+                          <span className="mock-preview">{'\u{1F3A4}'} Nota de voz (0:24)</span>
                         </div>
                       </div>
                       <div className="mock-chatlist-item">
@@ -304,8 +304,8 @@ const Landing: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <h3>Tus Conversaciones</h3>
-              <p>Mensajes privados y grupos organizados con bÃƒÆ’Ã‚Âºsqueda instantÃƒÆ’Ã‚Â¡nea</p>
+              <h3>{t.landing.screens.chats}</h3>
+              <p>{t.landing.screens.chatsDesc}</p>
             </div>
 
             {/* Screen 3: Community */}
@@ -329,15 +329,15 @@ const Landing: React.FC = () => {
                           <div className="mock-avatar-sm orange">D</div>
                           <div>
                             <strong>Diego Rodriguez</strong>
-                            <span>hace 2 dÃƒÆ’Ã‚Â­as</span>
+                            <span>hace 2 días</span>
                           </div>
                         </div>
-                        <p className="mock-post-text">Veracruzzzz ÃƒÂ°Ã…Â¸Ã‚Â¤Ã‚Â©</p>
-                        <div className="mock-post-image">ÃƒÂ°Ã…Â¸Ã‚ÂÃ¢â‚¬â€œÃƒÂ¯Ã‚Â¸Ã‚Â</div>
+                        <p className="mock-post-text">Veracruzzzz {'\u{1F929}'}</p>
+                        <div className="mock-post-image">{'\u{1F3D6}\uFE0F'}</div>
                         <div className="mock-post-actions">
-                          <span>ÃƒÂ¢Ã‚ÂÃ‚Â¤ÃƒÂ¯Ã‚Â¸Ã‚Â 24</span>
-                          <span>ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã‚Â¬ 8</span>
-                          <span>ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â€ÃƒÂ¯Ã‚Â¸Ã‚Â Compartir</span>
+                          <span>{'\u2764\uFE0F'} 24</span>
+                          <span>{'\u{1F4AC}'} 8</span>
+                          <span>{'\u2197\uFE0F'} Compartir</span>
                         </div>
                       </div>
                     </div>
@@ -364,22 +364,22 @@ const Landing: React.FC = () => {
                       </div>
                       <div className="mock-pay-actions">
                         <div className="mock-pay-btn">
-                          <span>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¤</span>
+                          <span>{'\u{1F4E4}'}</span>
                           <small>{t.pagos.send}</small>
                         </div>
                         <div className="mock-pay-btn">
-                          <span>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â¥</span>
+                          <span>{'\u{1F4E5}'}</span>
                           <small>{t.pagos.history}</small>
                         </div>
                         <div className="mock-pay-btn">
-                          <span>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â </span>
+                          <span>{'\u{1F4C4}'}</span>
                           <small>{t.pagos.history}</small>
                         </div>
                       </div>
                       <div className="mock-transactions">
                         <div className="mock-tx">
                           <div className="mock-avatar-xs green">A</div>
-                          <div><strong>Ana LÃƒÆ’Ã‚Â³pez</strong><br /><small>Ayer, 3:45 PM</small></div>
+                          <div><strong>Ana López</strong><br /><small>Ayer, 3:45 PM</small></div>
                           <span className="mock-tx-amount positive">+$500</span>
                         </div>
                         <div className="mock-tx">
@@ -403,7 +403,7 @@ const Landing: React.FC = () => {
           </div>
         </section>
 
-        {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ FEATURES ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
+        {/* -- FEATURES -- */}
         <section id="features" className={`landing-features ${isVisible('features') ? 'visible' : ''}`} data-animate>
           <h2>{t.landing.features.title}</h2>
           <p className="landing-features-sub">{t.landing.features.subtitle}</p>
@@ -453,17 +453,14 @@ const Landing: React.FC = () => {
           </div>
         </section>
 
-        {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ PRIVACY ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
+        {/* -- PRIVACY -- */}
         <section id="privacy" className={`landing-privacy ${isVisible('privacy') ? 'visible' : ''}`} data-animate>
           <div className="landing-privacy-inner">
             <div className="landing-privacy-shield">
               <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
             </div>
             <h2>{t.landing.privacy.title}</h2>
-            <p>
-              {t.landing.privacy.desc}
-
-            </p>
+            <p>{t.landing.privacy.desc}</p>
             <div className="landing-privacy-badges">
               <div className="landing-privacy-badge">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -485,11 +482,13 @@ const Landing: React.FC = () => {
           </div>
         </section>
 
-        {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ DOWNLOAD ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
+                {/* -- DOWNLOAD -- */}
         <section id="download" className={`landing-download ${isVisible('download') ? 'visible' : ''}`} data-animate>
           <h2>{t.landing.download.title}</h2>
           <p className="landing-download-sub">{t.landing.download.subtitle}</p>
           <div className="landing-download-grid">
+
+            {/* Android - ALL 4 options visible */}
             <div className="landing-download-card">
               <div className="landing-download-icon android">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
@@ -497,12 +496,38 @@ const Landing: React.FC = () => {
               <h3>Android</h3>
               <p>{t.landing.download.androidReq}</p>
               <a href="https://play.google.com/store" target="_blank" rel="noopener noreferrer" className="landing-store-btn google">
-                ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¶ Google Play
+                {'\u25B6'} Google Play
+              </a>
+              <a href="/mexichat.apk" download="MexiChat.apk" className="landing-store-btn apk-direct">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                {t.landing.download.downloadApk}
               </a>
               <a href="/mexichat.apk" download className="landing-download-link">
-                ÃƒÂ¢Ã‚Â¬Ã¢â‚¬Â¡ {t.landing.download.downloadApk}
+                {'\u2B07'} {t.landing.download.downloadApk}
               </a>
+              <div className="landing-download-help">
+                <details className="landing-apk-help">
+                  <summary>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    {lang === 'es' ? '¿Cómo instalar el APK?' : lang === 'ru' ? 'Как установить APK?' : lang === 'zh' ? '如何安装 APK？' : 'How to install the APK?'}
+                  </summary>
+                  <div className="landing-apk-steps">
+                    <ol>
+                      <li>{lang === 'es' ? 'Descarga el archivo APK tocando el botón verde de arriba' : lang === 'ru' ? 'Скачайте APK-файл, нажав зелёную кнопку выше' : lang === 'zh' ? '点击上方绿色按钮下载 APK 文件' : 'Download the APK file by tapping the green button above'}</li>
+                      <li>{lang === 'es' ? 'Abre Ajustes → Seguridad → Habilita "Orígenes desconocidos"' : lang === 'ru' ? 'Откройте Настройки → Безопасность → Включите «Неизвестные источники»' : lang === 'zh' ? '打开设置 → 安全 → 启用"未知来源"' : 'Open Settings → Security → Enable "Unknown sources"'}</li>
+                      <li>{lang === 'es' ? 'Abre el archivo descargado y toca "Instalar"' : lang === 'ru' ? 'Откройте загруженный файл и нажмите «Установить»' : lang === 'zh' ? '打开下载的文件并点击"安装"' : 'Open the downloaded file and tap "Install"'}</li>
+                      <li>{lang === 'es' ? '¡Listo! Abre MexiChat y crea tu cuenta' : lang === 'ru' ? 'Готово! Откройте MexiChat и создайте аккаунт' : lang === 'zh' ? '完成！打开 MexiChat 并创建您的账户' : 'Done! Open MexiChat and create your account'}</li>
+                    </ol>
+                    <p className="landing-apk-note">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      {lang === 'es' ? 'El APK es seguro y firmado oficialmente por MexiVanza.' : lang === 'ru' ? 'APK безопасен и официально подписан MexiVanza.' : lang === 'zh' ? 'APK 安全且由 MexiVanza 官方签名。' : 'The APK is safe and officially signed by MexiVanza.'}
+                    </p>
+                  </div>
+                </details>
+              </div>
             </div>
+
+            {/* iOS */}
             <div className="landing-download-card">
               <div className="landing-download-icon ios">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
@@ -510,9 +535,11 @@ const Landing: React.FC = () => {
               <h3>iOS</h3>
               <p>{t.landing.download.iosReq}</p>
               <a href="https://apps.apple.com" target="_blank" rel="noopener noreferrer" className="landing-store-btn apple">
-                 App Store
+                {'\uF8FF'} App Store
               </a>
             </div>
+
+            {/* Web App */}
             <div className="landing-download-card">
               <div className="landing-download-icon web">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -520,13 +547,12 @@ const Landing: React.FC = () => {
               <h3>{t.landing.download.webApp}</h3>
               <p>{t.landing.download.anyBrowser}</p>
               <button className="landing-store-btn web" onClick={() => navigate('/auth')}>
-                ÃƒÂ°Ã…Â¸Ã…â€™Ã‚Â {t.landing.download.openWebApp}
+                {'\u{1F310}'} {t.landing.download.openWebApp}
               </button>
             </div>
           </div>
         </section>
-
-        {/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ FOOTER ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */}
+        {/* -- FOOTER -- */}
         <footer className="landing-footer" role="contentinfo">
           <div className="landing-footer-inner">
             <div className="landing-footer-brand">
@@ -534,7 +560,7 @@ const Landing: React.FC = () => {
                 <img src="/apple-touch-icon.png" alt="MexiChat" className="landing-footer-logo" width="40" height="40" />
                 <span>Mexi<strong>Chat</strong></span>
               </div>
-              <p>La mensajerÃƒÆ’Ã‚Â­a de MÃƒÆ’Ã‚Â©xico para el mundo.<br/>Privada, segura, y siempre gratuita.</p>
+              <p>La mensajería de México para el mundo.<br/>Privada y segura, y siempre gratuita.</p>
             </div>
             <div className="landing-footer-links">
               <div className="landing-footer-col">

@@ -21,9 +21,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { startRingtone, stopRingtone } from '@/utils/sounds';
 import { sendPushNotification } from '@/utils/pushNotify';
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // BROWSER NOTIFICATION HELPER
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 function showCallNotification(callerName: string, callType: 'audio' | 'video', conversationId: string, from: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -49,9 +49,9 @@ function showCallNotification(callerName: string, callType: 'audio' | 'video', c
   } catch {}
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // HOOK
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 export function useGlobalCallManager() {
   const { user } = useAuth();

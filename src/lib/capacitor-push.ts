@@ -1,36 +1,25 @@
 ﻿/**
- * MEXICHAT — Capacitor Native Push Notifications (Hardened v2)
+ * MEXICHAT - Capacitor Native Push Notifications (Hardened v3)
  *
- * Strategy:
- *   - Native: Try FCM/APNs registration. If it fails (no google-services.json),
- *     fall back silently — Web Push via service worker still works in the WebView.
- *   - Web: Does nothing — useServiceWorker.ts handles web push.
- *
- * ALL operations are wrapped in try/catch to prevent crashes.
- * Push is best-effort — the app must never crash due to push failures.
+ * CRITICAL: Never crash the app. Push is best-effort.
+ * Permission is requested lazily, not on startup.
  */
 
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/integrations/supabase/client';
 
-// ===============================================================================
-// DETECTION
-// ===============================================================================
-
 export const isNative = Capacitor.isNativePlatform();
 export const isIOS = Capacitor.getPlatform() === 'ios';
 export const isAndroid = Capacitor.getPlatform() === 'android';
 
-// ===============================================================================
-// DYNAMIC IMPORTS (never crash on web)
-// ===============================================================================
-
 let PushNotificationsPlugin: any = null;
 let LocalNotificationsPlugin: any = null;
 let HapticsPlugin: any = null;
+let pluginsLoaded = false;
 
 async function loadNativePlugins(): Promise<boolean> {
   if (!isNative) return false;
+  if (pluginsLoaded) return !!PushNotificationsPlugin;
   try {
     const [pushMod, localMod, hapticsMod] = await Promise.allSettled([
       import('@capacitor/push-notifications'),
@@ -40,50 +29,76 @@ async function loadNativePlugins(): Promise<boolean> {
     if (pushMod.status === 'fulfilled') PushNotificationsPlugin = pushMod.value.PushNotifications;
     if (localMod.status === 'fulfilled') LocalNotificationsPlugin = localMod.value.LocalNotifications;
     if (hapticsMod.status === 'fulfilled') HapticsPlugin = hapticsMod.value.Haptics;
+    pluginsLoaded = true;
     return !!PushNotificationsPlugin;
   } catch {
     console.warn('[CapPush] Failed to load native plugins');
+    pluginsLoaded = true;
     return false;
   }
 }
-
-// ===============================================================================
-// REGISTER NATIVE PUSH
-// ===============================================================================
 
 let pushRegistered = false;
 
 export async function registerNativePush(userId: string): Promise<void> {
   if (!isNative || pushRegistered) return;
 
-  const loaded = await loadNativePlugins();
+  // Delay push registration to avoid blocking app startup
+  await new Promise(r => setTimeout(r, 3000));
+
+  let loaded = false;
+  try {
+    loaded = await loadNativePlugins();
+  } catch {
+    console.warn('[CapPush] Plugin load failed - skipping push');
+    return;
+  }
+
   if (!loaded || !PushNotificationsPlugin) {
-    console.warn('[CapPush] Push plugin not available — Web Push will handle notifications');
+    console.warn('[CapPush] Push plugin not available - Web Push will handle notifications');
     return;
   }
 
   try {
-    // 1. Request permission
-    const permResult = await PushNotificationsPlugin.requestPermissions();
-    if (permResult.receive !== 'granted') {
-      console.warn('[CapPush] Permission denied');
+    // 1. Check current permission status first (non-blocking)
+    let permStatus: any;
+    try {
+      permStatus = await PushNotificationsPlugin.checkPermissions();
+    } catch {
+      console.warn('[CapPush] Cannot check permissions - skipping');
       return;
     }
 
-    // 2. Try to register with FCM/APNs
-    // This WILL fail without google-services.json — that is OK
+    // 2. Only request permission if not already decided
+    if (permStatus.receive === 'denied') {
+      console.warn('[CapPush] Permission previously denied - skipping');
+      return;
+    }
+
+    if (permStatus.receive === 'prompt' || permStatus.receive === 'prompt-with-rationale') {
+      try {
+        const permResult = await PushNotificationsPlugin.requestPermissions();
+        if (permResult.receive !== 'granted') {
+          console.warn('[CapPush] Permission not granted - skipping');
+          return;
+        }
+      } catch {
+        console.warn('[CapPush] Permission request failed - skipping');
+        return;
+      }
+    }
+
+    // 3. Try to register with FCM/APNs
     try {
       await PushNotificationsPlugin.register();
     } catch (regErr: any) {
-      console.warn('[CapPush] FCM/APNs registration failed (expected without Firebase):', regErr?.message || regErr);
-      console.info('[CapPush] Falling back to Web Push via WebView service worker');
+      console.warn('[CapPush] FCM/APNs registration failed:', regErr?.message || regErr);
       return;
     }
 
-    // 3. Listen for registration token (only fires if FCM/APNs works)
+    // 4. Listen for registration token
     PushNotificationsPlugin.addListener('registration', async (token: { value: string }) => {
       console.log('[CapPush] Token received:', token.value.slice(0, 20) + '...');
-
       try {
         const platform = isIOS ? 'ios' : 'android';
         await (supabase
@@ -94,10 +109,7 @@ export async function registerNativePush(userId: string): Promise<void> {
             p256dh: platform,
             auth: token.value,
             updated_at: new Date().toISOString(),
-          } as any, {
-            onConflict: 'user_id,endpoint',
-          }) as any);
-
+          } as any, { onConflict: 'user_id,endpoint' }) as any);
         console.log('[CapPush] Token stored in DB');
         pushRegistered = true;
       } catch (err) {
@@ -105,15 +117,14 @@ export async function registerNativePush(userId: string): Promise<void> {
       }
     });
 
-    // 4. Registration error — not a crash, just log
+    // 5. Registration error - not a crash
     PushNotificationsPlugin.addListener('registrationError', (err: any) => {
       console.warn('[CapPush] Registration error (non-fatal):', err);
     });
 
-    // 5. Foreground notification received
+    // 6. Foreground notification
     PushNotificationsPlugin.addListener('pushNotificationReceived', async (notification: any) => {
       console.log('[CapPush] Foreground push:', notification.title);
-
       const data = notification.data || {};
       const type = data.type || 'message';
       const isCall = type === 'call' || type === 'incoming_call' || type === 'video_call';
@@ -153,16 +164,13 @@ export async function registerNativePush(userId: string): Promise<void> {
       }
     });
 
-    // 6. Notification tapped
+    // 7. Notification tapped
     PushNotificationsPlugin.addListener('pushNotificationActionPerformed', (action: any) => {
       console.log('[CapPush] Notification tapped:', action.notification?.title);
-
       const data = action.notification?.data || {};
       const type = data.type || 'message';
       const isCall = type === 'call' || type === 'incoming_call' || type === 'video_call';
-
       stopCallVibration();
-
       window.dispatchEvent(new CustomEvent('mc-navigate-conversation', {
         detail: {
           conversationId: data.conversationId || '',
@@ -174,13 +182,10 @@ export async function registerNativePush(userId: string): Promise<void> {
 
     console.log('[CapPush] Native push initialized');
   } catch (err) {
+    // ABSOLUTE LAST RESORT - never crash
     console.error('[CapPush] Init failed (non-fatal):', err);
   }
 }
-
-// ===============================================================================
-// UNREGISTER
-// ===============================================================================
 
 export async function unregisterNativePush(): Promise<void> {
   if (!isNative || !PushNotificationsPlugin) return;
@@ -189,10 +194,6 @@ export async function unregisterNativePush(): Promise<void> {
     pushRegistered = false;
   } catch {}
 }
-
-// ===============================================================================
-// STOP CALL VIBRATION
-// ===============================================================================
 
 export function stopCallVibration(): void {
   try {

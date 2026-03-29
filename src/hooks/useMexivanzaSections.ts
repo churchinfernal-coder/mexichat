@@ -1,4 +1,4 @@
-﻿/**
+/**
  * useMexivanzaSection -- Real-time data hook for any MexiVanza table.
  *
  * CORRECT table names from live MexiVanza DB:

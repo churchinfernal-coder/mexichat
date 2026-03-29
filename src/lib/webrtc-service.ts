@@ -76,9 +76,9 @@ class WebRTCService {
     console.log('[webrtc] 🚀 WebRTC Service instantiated');
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // INITIALIZATION
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   public async ensureInitialized(): Promise<void> {
     if (this.initialized && this.channel) return;
@@ -173,9 +173,9 @@ class WebRTCService {
     }, delay);
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // SIGNALING
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private async sendSignal(signal: LocalCallSignal, retries = 3): Promise<void> {
     await this.ensureInitialized();
@@ -216,9 +216,9 @@ class WebRTCService {
     console.error("[webrtc] ❌ sendSignal failed after all retries");
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // PEER CONNECTION
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private _createPC(callId: string, remoteUserId: string): RTCPeerConnection {
     // Close existing PC if any
@@ -324,9 +324,9 @@ class WebRTCService {
     return pc;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // ICE RESTART — carrier-grade retry
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private async _attemptICERestart(callId: string) {
     const attempts = this.iceRestartAttempts.get(callId) || 0;
@@ -361,9 +361,9 @@ class WebRTCService {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // CONNECTION TIMEOUT
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private _startConnectionTimeout(callId: string) {
     this._clearConnectionTimeout(callId);
@@ -386,9 +386,9 @@ class WebRTCService {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // ADD LOCAL TRACKS
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private _addLocalTracksToPC(callId: string) {
     const pc = this.pcs.get(callId);
@@ -416,9 +416,9 @@ class WebRTCService {
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // GET OTHER USER FROM CALL ID
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private _getOtherUserFromCallId(callId: string): string | null {
     const stored = this.callIdToOtherUser.get(callId);
@@ -446,9 +446,9 @@ class WebRTCService {
     return null;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // HANDLE INCOMING SIGNALS
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private async _handleIncomingSignal(signal: LocalCallSignal) {
     if (!this.currentUserId) {
@@ -522,9 +522,9 @@ class WebRTCService {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // OFFER / ANSWER / ICE HANDLING
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private async _handleOffer(callId: string, offer: RTCSessionDescriptionInit, from: string) {
     let pc = this.pcs.get(callId);
@@ -667,9 +667,9 @@ class WebRTCService {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // PUBLIC API: INITIATE CALL
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   public async initiateCall(targetUserId: string, callType: CallType = "video"): Promise<{ localStream: MediaStream; callId: string }> {
     await this.ensureInitialized();
@@ -699,9 +699,9 @@ class WebRTCService {
     return { localStream, callId };
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // PUBLIC API: ACCEPT CALL
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   public async acceptCall(callId: string, callType?: CallType): Promise<MediaStream> {
     await this.ensureInitialized();
@@ -744,9 +744,9 @@ class WebRTCService {
     return localStream;
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // MEDIA ACQUISITION WITH RETRY
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private async _getMediaWithRetry(callType: CallType, retries = 3): Promise<MediaStream> {
     const constraints: MediaStreamConstraints = {
@@ -791,9 +791,9 @@ class WebRTCService {
     throw new Error("Failed to access camera/microphone");
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // PUBLIC API: REJECT / END / TOGGLE
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   public rejectCall(callId: string) {
     const callerUserId = this._getOtherUserFromCallId(callId);
@@ -854,9 +854,9 @@ class WebRTCService {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // CLEANUP
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   private _cleanupCall(callId: string) {
     console.log(`[webrtc] 🧹 Cleaning up: ${callId.slice(0, 16)}`);
@@ -924,9 +924,9 @@ class WebRTCService {
     this.iceRestartAttempts.clear();
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // GETTERS
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   public getPeerConnection(callId: string): RTCPeerConnection | undefined {
     return this.pcs.get(callId);

@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------
 
 export type TxProvider = 'mercadopago' | 'oxxo';
 export type TxStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'refunded' | 'in_process' | 'charged_back';
@@ -19,7 +19,7 @@ export class MexiPayError extends Error {
   }
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------
 
 async function callEdgeFunction<T>(name: string, opts: {
   method?: string;
@@ -51,7 +51,7 @@ async function callEdgeFunction<T>(name: string, opts: {
   return (json.data ?? json) as T;
 }
 
-// â”€â”€â”€ Payment Result Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------
 
 export interface PaymentResult {
   transaction_id: string;
@@ -70,7 +70,7 @@ export interface OXXOResult {
   expiration_date: string;
 }
 
-// â”€â”€â”€ Mercado Pago Checkout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------
 
 /**
  * Create a payment via Mercado Pago checkout.
@@ -89,7 +89,7 @@ export async function createPayment(params: {
   });
 }
 
-// â”€â”€â”€ OXXO Cash Payment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------
 
 /**
  * Create an OXXO cash payment reference via Mercado Pago.
@@ -108,7 +108,7 @@ export async function createOXXOPayment(params: {
   });
 }
 
-// â”€â”€â”€ Contact Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ----------
 
 export interface ContactResult {
   id: string;

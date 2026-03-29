@@ -5,7 +5,7 @@
  * - Message reactions (emoji on messages)
  * - Message editing (edit sent messages within 15min)
  * - Pinned messages integration
- * - Message delivery status (âœ“ âœ“âœ“ blue)
+ * - Message delivery status (â�““ â�““â�““ blue)
  * - Starred messages
  * - Link previews
  * - Thread replies
@@ -545,7 +545,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
                 {activeCall.status === 'calling' && 'ðŸ“ž Llamando...'}
                 {activeCall.status === 'ringing' && 'ðŸ”” Sonando...'}
-                {activeCall.status === 'connected' && `â±ï¸ ${formatCallDuration(activeCall.duration)}`}
+                {activeCall.status === 'connected' && `⏱️ ${formatCallDuration(activeCall.duration)}`}
               </div>
             </div>
           )}
@@ -653,7 +653,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {/* Messages */}
       <div className="mensajes-messages">
         {visibleMessages.length === 0 ? (
-          <div className="mensajes-empty-state"><p>EnvÃ­a un mensaje para iniciar la conversacion</p></div>
+          <div className="mensajes-empty-state"><p>Envía un mensaje para iniciar la conversacion</p></div>
         ) : (
           Array.from(groupedMessages.entries()).map(([dateKey, msgs]) => (
             <React.Fragment key={dateKey}>
@@ -693,7 +693,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     {repliedMsg && (
                       <div style={{ background: isSent ? 'rgba(29,78,216,0.08)' : 'rgba(255,255,255,0.03)', borderLeft: '2px solid var(--mc-blue)', borderRadius: '0', padding: '6px 10px', marginBottom: '4px', fontSize: '12px', maxWidth: '100%', cursor: 'pointer' }}
                         onClick={(e) => { e.stopPropagation(); const el = document.getElementById(`msg-${repliedMsg.id}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add('msg-highlight'); setTimeout(() => el?.classList.remove('msg-highlight'), 1500); }}>
-                        <div style={{ fontWeight: 600, color: 'var(--mc-blue)', marginBottom: '2px' }}>{repliedMsg.senderId === currentUserId ? 'TÃº' : otherUser.fullName}</div>
+                        <div style={{ fontWeight: 600, color: 'var(--mc-blue)', marginBottom: '2px' }}>{repliedMsg.senderId === currentUserId ? 'Tú' : otherUser.fullName}</div>
                         <div style={{ color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{repliedMsg.mediaUrl ? 'ðŸ“Ž Archivo' : truncateText(repliedMsg.content, 60)}</div>
                       </div>
                     )}
@@ -846,7 +846,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <div style={{ padding: '8px 20px', background: 'var(--mc-sidebar)', borderTop: '1px solid var(--mc-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '2px', height: '36px', background: 'var(--mc-blue)', flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--mc-blue)' }}>{replyingTo.senderId === currentUserId ? 'TÃº' : otherUser.fullName}</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--mc-blue)' }}>{replyingTo.senderId === currentUserId ? 'Tú' : otherUser.fullName}</div>
             <div style={{ fontSize: '13px', color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{replyingTo.mediaUrl ? 'ðŸ“Ž Archivo' : truncateText(replyingTo.content, 80)}</div>
           </div>
           <button onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>

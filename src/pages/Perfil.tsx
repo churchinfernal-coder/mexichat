@@ -1,8 +1,8 @@
 /**
- * MEXICHAT ó Perfil (MexiVanza User Profile)
+ * MEXICHAT ÔøΩ‚Äù Perfil (MexiVanza User Profile)
  * 
  * Full in-app profile view pulling real data from MexiVanza Supabase.
- * No external links ó everything rendered natively.
+ * No external links ÔøΩ‚Äù everything rendered natively.
  */
 
 import React, { useState, useEffect } from 'react';

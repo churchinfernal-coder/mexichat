@@ -6,9 +6,9 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 export interface IncomingCallSignal {
   from: string;
@@ -54,9 +54,9 @@ interface CallContextValue {
   isProcessingCall: React.MutableRefObject<boolean>;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // CONTEXT
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 const CallContext = createContext<CallContextValue | null>(null);
 
@@ -66,9 +66,9 @@ export const useCallContext = (): CallContextValue => {
   return ctx;
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // PROVIDER
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 export const CallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [incomingCall, setIncomingCallState] = useState<IncomingCallSignal | null>(null);

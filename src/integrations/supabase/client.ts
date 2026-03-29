@@ -1,12 +1,12 @@
 /**
- * MexiChat — Mercado Pago facilitator wrapper
- * MexiChat never handles raw card data — all tokenized by MP SDK
+ * MexiChat â€” Mercado Pago facilitator wrapper
+ * MexiChat never handles raw card data â€” all tokenized by MP SDK
  */
 
 const MP_PUBLIC_KEY = import.meta.env.VITE_MP_PUBLIC_KEY ?? '';
 const MP_OAUTH_URL  = 'https://auth.mercadopago.com/authorization';
 const MP_CLIENT_ID  = import.meta.env.VITE_MP_CLIENT_ID ?? '';
-const REDIRECT_URI  = `${window.location.origin}/pagos/callback`;
+function getRedirectUri() { try { return window.location.origin + '/pagos/callback'; } catch { return 'https://mexichat.app/pagos/callback'; } }
 
 export type Provider = 'mercadopago' | 'oxxo' | 'paypal';
 
@@ -26,7 +26,7 @@ export interface TransactionResult {
   providerData: Record<string, unknown>;
 }
 
-/** Load Mercado Pago SDK dynamically — only when needed */
+/** Load Mercado Pago SDK dynamically â€” only when needed */
 export async function loadMPSdk(): Promise<void> {
   if ((window as any).MercadoPago) return;
   await new Promise<void>((resolve, reject) => {
@@ -43,7 +43,7 @@ export function redirectToMPOAuth(): void {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: MP_CLIENT_ID,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: getRedirectUri(),
     state: crypto.randomUUID(),
   });
   window.location.href = `${MP_OAUTH_URL}?${params}`;

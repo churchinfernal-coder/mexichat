@@ -3,7 +3,7 @@
 .landing * { box-sizing: border-box; }
 
 /* NAV */
-.landing-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(248,250,252,0.88); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,0,0,0.06); transform: translateY(-100%); transition: transform 0.5s ease; }
+.landing-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(248,250,252,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,0,0,0.06); transform: translateY(0); transition: transform 0.5s ease; }
 .landing-nav.visible { transform: translateY(0); }
 .landing-nav-inner { max-width: 1200px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
 .landing-logo { display: flex; align-items: center; gap: 10px; font-size: 20px; cursor: pointer; color: var(--l-text); font-weight: 600; }
@@ -177,13 +177,14 @@
 .landing-download.visible { opacity: 1; transform: translateY(0); }
 .landing-download h2 { font-size: clamp(1.8rem, 4vw, 2.5rem); font-weight: 800; margin-bottom: 8px; }
 .landing-download-sub { color: var(--l-muted); font-size: 16px; margin-bottom: 48px; }
-.landing-download-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 800px; margin: 0 auto; }
+.landing-download-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; max-width: 1100px; margin: 0 auto; }
 .landing-download-card { background: #f8fafc; border-radius: 16px; padding: 32px 24px; border: 1px solid rgba(0,0,0,0.04); display: flex; flex-direction: column; align-items: center; gap: 10px; transition: all 0.3s; }
 .landing-download-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.06); }
 .landing-download-icon { width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
 .landing-download-icon.android { background: rgba(16,185,129,0.1); color: #059669; }
 .landing-download-icon.ios { background: rgba(0,0,0,0.06); color: #000; }
 .landing-download-icon.web { background: rgba(29,78,216,0.1); color: #1d4ed8; }
+.landing-download-icon.desktop { background: rgba(55,71,79,0.1); color: #37474f; }
 .landing-download-card h3 { font-size: 16px; font-weight: 700; margin: 0; }
 .landing-download-card p { font-size: 13px; color: var(--l-muted); margin: 0; }
 .landing-store-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; border: none; width: 100%; }
@@ -191,8 +192,47 @@
 .landing-store-btn.apple { background: #000; color: white; }
 .landing-store-btn.web { background: var(--l-blue); color: white; }
 .landing-store-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-.landing-download-link { font-size: 12px; color: var(--l-muted); text-decoration: none; margin-top: 4px; transition: color 0.2s; }
+.landing-download-link { font-size: 12px; color: var(--l-muted); text-decoration: none; margin-top: 4px; transition: color 0.2s; display: inline-flex; align-items: center; gap: 4px; }
 .landing-download-link:hover { color: var(--l-blue); }
+
+/* APK Direct Download Button */
+.landing-store-btn.apk-direct { background: linear-gradient(135deg, #059669, #10b981); color: white; }
+.landing-store-btn.apk-direct:hover { box-shadow: 0 6px 20px rgba(5,150,105,0.4); }
+.landing-store-btn.apk-direct svg { flex-shrink: 0; }
+
+/* TestFlight Button */
+.landing-store-btn.testflight { background: linear-gradient(135deg, #0d47a1, #1976d2); color: white; }
+.landing-store-btn.testflight:hover { box-shadow: 0 6px 20px rgba(13,71,161,0.4); }
+.landing-store-btn.testflight svg { flex-shrink: 0; }
+
+/* Desktop Download Buttons */
+.landing-store-btn.desktop-dl { background: linear-gradient(135deg, #37474f, #546e7a); color: white; font-size: 13px; padding: 10px 20px; }
+.landing-store-btn.desktop-dl:hover { box-shadow: 0 6px 20px rgba(55,71,79,0.4); }
+.landing-store-btn.desktop-dl svg { flex-shrink: 0; }
+
+/* APK Install Help (collapsible) */
+.landing-download-help { width: 100%; margin-top: 4px; }
+.landing-apk-help { border: 1px solid rgba(0,0,0,0.08); border-radius: 12px; overflow: hidden; background: #fff; transition: box-shadow 0.2s ease; text-align: left; }
+.landing-apk-help[open] { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.landing-apk-help summary { display: flex; align-items: center; gap: 6px; padding: 10px 14px; font-size: 12px; font-weight: 600; color: var(--l-blue); cursor: pointer; list-style: none; user-select: none; transition: background 0.2s ease; }
+.landing-apk-help summary::-webkit-details-marker { display: none; }
+.landing-apk-help summary::after { content: '\25BC'; font-size: 9px; margin-left: auto; transition: transform 0.2s ease; color: var(--l-muted); }
+.landing-apk-help[open] summary::after { transform: rotate(180deg); }
+.landing-apk-help summary:hover { background: rgba(29,78,216,0.04); }
+.landing-apk-help summary svg { flex-shrink: 0; color: var(--l-blue); }
+.landing-apk-steps { padding: 4px 14px 14px; }
+.landing-apk-steps ol { margin: 0; padding-left: 18px; font-size: 11px; line-height: 1.7; color: var(--l-muted); }
+.landing-apk-steps ol li { margin-bottom: 6px; }
+.landing-apk-steps ol li:last-child { margin-bottom: 0; }
+.landing-apk-note { display: flex; align-items: flex-start; gap: 6px; margin-top: 10px; padding: 8px 10px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 8px; font-size: 11px; color: #166534; line-height: 1.5; }
+.landing-apk-note svg { flex-shrink: 0; margin-top: 1px; color: #16a34a; }
+
+/* SHA-256 Verification Bar */
+.landing-download-verify { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 32px; padding: 14px 24px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; border-radius: 12px; max-width: 700px; margin-left: auto; margin-right: auto; }
+.landing-download-verify svg { flex-shrink: 0; color: #16a34a; }
+.landing-download-verify span { font-size: 13px; color: #166534; font-weight: 500; }
+.landing-verify-link { font-size: 12px; color: #15803d; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; margin-left: 4px; transition: color 0.2s ease; }
+.landing-verify-link:hover { color: #166534; }
 
 /* FOOTER */
 .landing-footer { background: #0f172a; color: white; padding: 60px 24px 0; }
@@ -214,6 +254,7 @@
 /* MOBILE */
 @media (max-width: 1024px) {
   .landing-screens-grid { grid-template-columns: repeat(2, 1fr); gap: 32px; }
+  .landing-download-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
   .landing-nav-links { display: none; }
@@ -224,24 +265,25 @@
   .landing-hero-visual { flex: none; }
   .landing-phone-frame { width: 260px; }
   .landing-screens-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
-  .landing-download-grid { grid-template-columns: 1fr; max-width: 320px; }
+  .landing-download-grid { grid-template-columns: 1fr; max-width: 360px; }
   .landing-footer-inner { flex-direction: column; gap: 32px; }
   .landing-footer-bottom { flex-direction: column; text-align: center; }
   .landing-features-grid { grid-template-columns: 1fr; }
+  .landing-download-verify { flex-direction: column; text-align: center; gap: 6px; padding: 12px 16px; }
 }
 @media (max-width: 480px) {
   .landing-screens-grid { grid-template-columns: 1fr; max-width: 280px; margin: 0 auto; }
   .landing-hero h1 { font-size: 2.4rem; }
   .landing-hero-badge { font-size: 12px; }
 }
-/* ─── Landing Language Toggle ─── */
+/* Landing Language Toggle */
 .landing-lang-toggle {
   display: flex;
   gap: 2px;
   padding: 3px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.1);
   margin-left: 8px;
 }
 
@@ -262,13 +304,13 @@
 }
 
 .landing-lang-btn.active {
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.2);
+  background: rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 1.5px rgba(37, 99, 235, 0.25);
   transform: scale(1.1);
 }
 
 .landing-lang-btn:not(.active):hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.08);
 }
 
 .landing-lang-btn:active {

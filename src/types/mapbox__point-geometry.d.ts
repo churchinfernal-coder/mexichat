@@ -1,4 +1,4 @@
-﻿declare module '@mapbox/point-geometry' {
+declare module '@mapbox/point-geometry' {
   class Point {
     x: number;
     y: number;

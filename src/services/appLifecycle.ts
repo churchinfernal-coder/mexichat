@@ -1,4 +1,4 @@
-﻿/**
+/**
  * App Lifecycle Service
  *
  * Handles Capacitor app state changes for:

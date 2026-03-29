@@ -1,5 +1,5 @@
 /**
- * useVideoInteractions — Interaction hooks for MexiVanza videos & posts.
+ * useVideoInteractions �” Interaction hooks for MexiVanza videos & posts.
  *
  * REAL backend tables:
  *   video_comments (id, video_id, user_id, comment, created_at) + profiles join
@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { mexivanza } from '@/integrations/mexivanza/client';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// �”��”��”� Types �”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”�
 
 export interface VideoComment {
   id: string;
@@ -40,7 +40,7 @@ interface InteractionState {
   likeLoading: boolean;
 }
 
-// ─── Like persistence via localStorage ──────────────────────────────────────
+// �”��”��”� Like persistence via localStorage �”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”�
 
 const LIKED_KEY = 'mexivanza_liked';
 
@@ -61,7 +61,7 @@ function wasLikedBefore(id: string): boolean {
   return getLikedSet().has(id);
 }
 
-// ─── Rate limiter ───────────────────────────────────────────────────────────
+// �”��”��”� Rate limiter �”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”�
 
 const actionTimestamps = new Map<string, number>();
 
@@ -72,7 +72,7 @@ function isRateLimited(key: string, cooldownMs: number): boolean {
   return false;
 }
 
-// ─── Native share helper ────────────────────────────────────────────────────
+// �”��”��”� Native share helper �”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”�
 
 async function nativeShare(title: string, text: string, url: string): Promise<boolean> {
   if (navigator.share) {
@@ -87,7 +87,7 @@ async function nativeShare(title: string, text: string, url: string): Promise<bo
   return true;
 }
 
-// ─── Fetch real comments from video_comments table ──────────────────────────
+// �”��”��”� Fetch real comments from video_comments table �”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”��”�
 
 async function fetchVideoComments(videoId: string): Promise<VideoComment[]> {
   const { data, error } = await mexivanza
@@ -110,9 +110,9 @@ async function fetchVideoComments(videoId: string): Promise<VideoComment[]> {
   }));
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// useVideoInteraction — single video
-// ═════════════════════════════════════════════════════════════════════════════
+// ----------
+// useVideoInteraction �” single video
+// ----------
 
 export function useVideoInteraction(videoId: string, initialCounts?: {
   likes?: number; comments?: number; shares?: number; views?: number;
@@ -148,7 +148,7 @@ export function useVideoInteraction(videoId: string, initialCounts?: {
     }));
   }, [initialCounts?.likes, initialCounts?.comments, initialCounts?.shares, initialCounts?.views]);
 
-  // Toggle like — enforced single like via localStorage
+  // Toggle like �” enforced single like via localStorage
   const toggleLike = useCallback(async () => {
     if (isRateLimited(`like-video-${videoId}`, 800)) return;
 
@@ -193,7 +193,7 @@ export function useVideoInteraction(videoId: string, initialCounts?: {
     }
   }, [videoId, state.liked]);
 
-  // Add comment — inserts into video_comments table
+  // Add comment �” inserts into video_comments table
   const addComment = useCallback(async (content: string) => {
     if (isRateLimited(`comment-video-${videoId}`, 3000)) {
       throw new Error('Espera un momento antes de comentar de nuevo');
@@ -257,7 +257,7 @@ export function useVideoInteraction(videoId: string, initialCounts?: {
     }
   }, [videoId]);
 
-  // Share — native share dialog + RPC
+  // Share �” native share dialog + RPC
   const recordShare = useCallback(async () => {
     if (isRateLimited(`share-video-${videoId}`, 2000)) return;
 
@@ -287,7 +287,7 @@ export function useVideoInteraction(videoId: string, initialCounts?: {
     }
   }, [videoId]);
 
-  // Load comments — real from video_comments table
+  // Load comments �” real from video_comments table
   const loadComments = useCallback(async () => {
     setState(prev => ({ ...prev, commentsLoading: true }));
     try {
@@ -305,9 +305,9 @@ export function useVideoInteraction(videoId: string, initialCounts?: {
   return { ...state, toggleLike, addComment, recordView, recordShare, loadComments };
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// usePostInteraction — single post
-// ═════════════════════════════════════════════════════════════════════════════
+// ----------
+// usePostInteraction �” single post
+// ----------
 
 export function usePostInteraction(postId: string, initialCounts?: {
   likes?: number; comments?: number; shares?: number; views?: number;
@@ -342,7 +342,7 @@ export function usePostInteraction(postId: string, initialCounts?: {
     }));
   }, [initialCounts?.likes, initialCounts?.comments, initialCounts?.shares, initialCounts?.views]);
 
-  // Toggle like — persisted via localStorage
+  // Toggle like �” persisted via localStorage
   const toggleLike = useCallback(async () => {
     if (isRateLimited(`like-post-${postId}`, 800)) return;
 
@@ -378,7 +378,7 @@ export function usePostInteraction(postId: string, initialCounts?: {
     }
   }, [postId, state.liked]);
 
-  // Add comment (local-only — no post_comments table on MexiVanza)
+  // Add comment (local-only �” no post_comments table on MexiVanza)
   const addComment = useCallback(async (content: string) => {
     if (isRateLimited(`comment-post-${postId}`, 3000)) {
       throw new Error('Espera un momento antes de comentar de nuevo');
@@ -440,7 +440,7 @@ export function usePostInteraction(postId: string, initialCounts?: {
     }
   }, [postId]);
 
-  // Share — native dialog + RPC
+  // Share �” native dialog + RPC
   const recordShare = useCallback(async () => {
     if (isRateLimited(`share-post-${postId}`, 2000)) return;
 
@@ -470,7 +470,7 @@ export function usePostInteraction(postId: string, initialCounts?: {
     }
   }, [postId]);
 
-  // Load comments — local state only (no table for post comments)
+  // Load comments �” local state only (no table for post comments)
   const loadComments = useCallback(async () => {
     setState(prev => ({ ...prev, commentsLoading: false }));
   }, []);
@@ -478,9 +478,9 @@ export function usePostInteraction(postId: string, initialCounts?: {
   return { ...state, toggleLike, addComment, recordView, recordShare, loadComments };
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// useFollow — follow/unfollow a creator via localStorage + user_follows
-// ═════════════════════════════════════════════════════════════════════════════
+// ----------
+// useFollow �” follow/unfollow a creator via localStorage + user_follows
+// ----------
 
 const FOLLOWS_KEY = 'mexivanza_follows';
 
@@ -521,7 +521,7 @@ export function useFollow(creatorId: string | undefined) {
           status: 'accepted',
         });
       }
-    } catch { /* RLS may block — local state is authoritative */ }
+    } catch { /* RLS may block �” local state is authoritative */ }
 
     setLoading(false);
   }, [creatorId, following, loading]);

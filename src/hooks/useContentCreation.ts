@@ -217,7 +217,7 @@ export function useContentCreation() {
     try {
       setProgress(input.files?.length ? 'Subiendo fotos...' : 'Creando artículo...');
       await createMeximartListing(input);
-      setProgress('¡Artículo publicado!');
+      setProgress('?Artículo publicado!');
     } catch (err: any) {
       setError(err.message);
       throw err;

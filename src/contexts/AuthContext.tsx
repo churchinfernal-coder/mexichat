@@ -1,12 +1,12 @@
-﻿import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { syncSignUpToMexivanza, syncSignInToMexivanza } from '@/services/mexivanzaSync';
 import { autoFriendAdmin } from '@/services/adminService';
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 // TYPES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 
 export type AccountType = 'user';
 
@@ -26,9 +26,9 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 // CONTEXT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -36,9 +36,9 @@ const ADMIN_ROLES = ['admin', 'super_admin'];
 const PROFILE_RETRY_ATTEMPTS = 5;
 const PROFILE_RETRY_BASE_MS = 400;
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 // HELPERS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 
 function isValidAccountType(value: unknown): value is AccountType {
   return value === 'user' || value === 'client'; // 'client' accepted for back-compat
@@ -61,7 +61,7 @@ async function waitForProfile(
 
     if (!error && data?.account_type) return data;
 
-    // Profile doesn't exist yet – exponential backoff
+    // Profile doesn't exist yet �“ exponential backoff
     if (attempt < retries - 1) {
       await new Promise((r) => setTimeout(r, PROFILE_RETRY_BASE_MS * (attempt + 1)));
     }
@@ -94,9 +94,9 @@ function tryRecoverSessionFromStorage(): { access_token: string; refresh_token: 
   return null;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 // PROVIDER
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -176,7 +176,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // â”€â”€ Auth listener (stable – no dependency on handleSession) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Auth listener (stable �“ no dependency on handleSession) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   useEffect(() => {
     // STEP 1: Listen for auth changes
@@ -204,45 +204,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // STEP 3: iOS PWA – Re-check session when app resumes from background
+    // ----------
+    // STEP 3: iOS PWA �“ Re-check session when app resumes from background
     //
     // This is the critical fix for "app logs out when closed on iPhone".
     // iOS kills the WebView when the PWA is backgrounded. When it resumes,
     // the JS context is fresh but localStorage may still have tokens.
     //
     // Strategy:
-    //   1. Try getSession() – works if Supabase SDK still has it cached
-    //   2. Try refreshSession() – works if refresh token is still valid
-    //   3. Try recovering from localStorage directly – last resort
-    //   4. NEVER force logout – let user navigate naturally to login
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    //   1. Try getSession() �“ works if Supabase SDK still has it cached
+    //   2. Try refreshSession() �“ works if refresh token is still valid
+    //   3. Try recovering from localStorage directly �“ last resort
+    //   4. NEVER force logout �“ let user navigate naturally to login
+    // ----------
 
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') return;
 
       supabase.auth.getSession().then(({ data: { session: refreshedSession } }) => {
         if (refreshedSession) {
-          // Session still valid – update state silently
+          // Session still valid �“ update state silently
           setSession(refreshedSession);
           setUser(refreshedSession.user);
           recoveryAttemptedRef.current = false;
           return;
         }
 
-        // Session is null – try to refresh
+        // Session is null �“ try to refresh
         supabase.auth.refreshSession().then(({ data: { session: newSession }, error }) => {
           if (newSession) {
             handleSessionRef.current?.(newSession);
             recoveryAttemptedRef.current = false;
-            console.log('[Auth] âœ… Session refreshed on visibility change');
+            console.log('[Auth] â�“… Session refreshed on visibility change');
             return;
           }
 
-          // refreshSession also failed – try localStorage recovery (once per resume)
+          // refreshSession also failed �“ try localStorage recovery (once per resume)
           if (error && !recoveryAttemptedRef.current) {
             recoveryAttemptedRef.current = true;
-            console.warn('[Auth] Session refresh failed:', error.message, '– attempting localStorage recovery');
+            console.warn('[Auth] Session refresh failed:', error.message, '�“ attempting localStorage recovery');
 
             const stored = tryRecoverSessionFromStorage();
             if (stored) {
@@ -252,9 +252,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               }).then(({ data: { session: recoveredSession } }) => {
                 if (recoveredSession) {
                   handleSessionRef.current?.(recoveredSession);
-                  console.log('[Auth] âœ… Session recovered from localStorage');
+                  console.log('[Auth] â�“… Session recovered from localStorage');
                 } else {
-                  console.warn('[Auth] localStorage recovery failed – user will need to re-login');
+                  console.warn('[Auth] localStorage recovery failed �“ user will need to re-login');
                   // DON'T call signOut() or clear state here.
                   // Let the user stay on the current page. They'll hit a
                   // permission error naturally if they try to do something
@@ -264,7 +264,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 console.warn('[Auth] setSession from localStorage threw');
               });
             } else {
-              console.warn('[Auth] No stored tokens found – user will need to re-login');
+              console.warn('[Auth] No stored tokens found �“ user will need to re-login');
             }
           }
         });
@@ -273,24 +273,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // STEP 3b: iOS PWA – Handle "pageshow" event (fires when restored from bfcache)
+    // STEP 3b: iOS PWA �“ Handle "pageshow" event (fires when restored from bfcache)
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
-        console.log('[Auth] Page restored from bfcache – re-checking session');
+        console.log('[Auth] Page restored from bfcache �“ re-checking session');
         handleVisibilityChange();
       }
     };
     window.addEventListener('pageshow', handlePageShow);
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ----------
     // STEP 4: Proactive token refresh every 4 minutes
     //
-    // Was 10 minutes – too slow for iOS which can kill the app between
+    // Was 10 minutes �“ too slow for iOS which can kill the app between
     // intervals. 4 minutes ensures the token is always fresh when the
     // user returns.
     //
     // Only refreshes if token expires within 10 minutes (600 seconds).
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ----------
 
     const refreshInterval = setInterval(() => {
       supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
@@ -311,9 +311,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     }, 4 * 60 * 1000);
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ----------
     // CLEANUP
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ----------
 
     return () => {
       subscription.unsubscribe();
@@ -400,9 +400,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 // HOOK
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ----------
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

@@ -516,7 +516,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
             {isGroupMuted && <BellOff size={14} style={{ marginLeft: '6px', color: 'var(--mc-text-muted)', verticalAlign: 'middle' }} />}
           </div>
           <div className="mensajes-chat-header-status offline">
-            {members.length} miembros Â· {onlineCount} en lÃ­nea
+            {members.length} miembros · {onlineCount} en línea
           </div>
         </div>
 
@@ -617,7 +617,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
           <div style={{ background: 'var(--mc-sidebar)', borderRadius: '12px', width: '100%', maxWidth: '400px', maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: '16px', borderBottom: '1px solid var(--mc-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 700, color: 'var(--mc-text)' }}>Miembros ({members.length})</span>
-              <button onClick={() => setShowMembers(false)} style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer' }}>âœ•</button>
+              <button onClick={() => setShowMembers(false)} style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer' }}>â�“•</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
               {members.map((m) => (
@@ -632,7 +632,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                       {m.role === 'admin' && <Shield size={14} style={{ color: '#3b82f6' }} />}
                     </div>
                     <div style={{ fontSize: '12px', color: m.isOnline ? 'var(--mc-online)' : 'var(--mc-text-muted)' }}>
-                      {m.isOnline ? 'En lÃ­nea' : m.username ? `@${m.username}` : 'Desconectado'}
+                      {m.isOnline ? 'En línea' : m.username ? `@${m.username}` : 'Desconectado'}
                     </div>
                   </div>
                   {isAdmin && m.userId !== currentUserId && m.role !== 'owner' && (
@@ -657,7 +657,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
           <div style={{ background: 'var(--mc-sidebar)', borderRadius: '12px', width: '100%', maxWidth: '400px', padding: '20px', border: '1px solid var(--mc-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontWeight: 700, fontSize: '16px', color: 'var(--mc-text)' }}>Editar Grupo</span>
-              <button onClick={() => setShowEditGroup(false)} style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer' }}>âœ•</button>
+              <button onClick={() => setShowEditGroup(false)} style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer' }}>â�“•</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -693,7 +693,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
       {/* â”€â”€â”€ Messages â”€â”€â”€ */}
       <div className="mensajes-messages">
         {messages.length === 0 ? (
-          <div className="mensajes-empty-state"><Users size={40} strokeWidth={1} /><p>Grupo creado. Â¡EnvÃ­a el primer mensaje!</p></div>
+          <div className="mensajes-empty-state"><Users size={40} strokeWidth={1} /><p>Grupo creado. ¡Envía el primer mensaje!</p></div>
         ) : (
           Array.from(grouped.entries()).map(([dateKey, msgs]) => (
             <React.Fragment key={dateKey}>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Account Deletion Service
  *
  * Compliant with Apple App Store (5.1.1), Google Play, GDPR Art 17,

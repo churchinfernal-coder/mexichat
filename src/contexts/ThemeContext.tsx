@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // THEME TYPES
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 export type ThemeId = 'platinum' | 'diamond' | 'gold';
 export type FontFamily = 'inter' | 'roboto' | 'poppins' | 'montserrat' | 'system';
@@ -21,9 +21,9 @@ export interface ThemeConfig {
   fontFamily: FontFamily;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // ACCENT COLOR PRESETS
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 export const ACCENT_COLORS: Record<string, AccentColor> = {
   blue:    { name: 'Azul',    primary: '#1d4ed8', light: '#3b82f6', dark: '#1e40af', bg: 'rgba(29,78,216,0.08)' },
@@ -35,9 +35,9 @@ export const ACCENT_COLORS: Record<string, AccentColor> = {
   black:   { name: 'Negro',   primary: '#18181b', light: '#3f3f46', dark: '#09090b', bg: 'rgba(24,24,27,0.08)' },
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // FONT FAMILIES
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 export const FONT_FAMILIES: Record<FontFamily, { name: string; stack: string }> = {
   inter:      { name: 'Inter',       stack: "'Inter', system-ui, sans-serif" },
@@ -47,9 +47,9 @@ export const FONT_FAMILIES: Record<FontFamily, { name: string; stack: string }> 
   system:     { name: 'Sistema',     stack: "system-ui, -apple-system, sans-serif" },
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // STORAGE
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 const STORAGE_KEY = 'mc_theme_config';
 
@@ -65,9 +65,9 @@ function saveConfig(config: ThemeConfig) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); } catch { /* ignore */ }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // CONTEXT
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 interface ThemeContextValue {
   config: ThemeConfig;

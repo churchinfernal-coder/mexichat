@@ -197,7 +197,7 @@ export const PWAInstallBanner: React.FC = () => {
                   3. Toca <span style={{ color: C.blue }}>Añadir</span>
                 </div>
                 <div style={{ fontSize: '11px', color: C.textBody }}>
-                  ¡Listo! La app aparecerá en tu pantalla de inicio
+                  ?Listo! La app aparecerá en tu pantalla de inicio
                 </div>
               </div>
             </div>

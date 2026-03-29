@@ -16,31 +16,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { playNotificationSound } from '@/utils/sounds';
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // HELPER: Read active conversation ID from window
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 function getActiveConvId(): string | undefined {
   return (window as unknown as Record<string, unknown>).__mc_active_conv_id as string | undefined;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 
 const NOTIFICATION_AUTO_CLOSE_MS = 8_000;
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ----------
 // PROVIDER COMPONENT
-// ═════════════════���═════════════════════════════════════════════════════════
+// ----------
 
 const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   const myUserId = user?.id;
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // REQUEST BROWSER NOTIFICATION PERMISSION
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   useEffect(() => {
     if (!myUserId) return;
@@ -49,9 +49,9 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [myUserId]);
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // BROWSER NOTIFICATION HELPER
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   const showBrowserNotification = useCallback((
     title: string,
@@ -85,9 +85,9 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, []);
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // MESSAGE NOTIFICATION LISTENER — SOLE OWNER of `msg-notify:{myUserId}`
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   useEffect(() => {
     if (!myUserId) return;
@@ -141,9 +141,9 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => { supabase.removeChannel(channel); };
   }, [myUserId, showBrowserNotification]);
 
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
   // RENDER — Just children, no call UI
-  // ═══════════════════════════════════════════════════════════════════════
+  // ----------
 
   return <>{children}</>;
 };

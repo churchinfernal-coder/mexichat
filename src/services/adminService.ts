@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Admin Service -- resolves admin user, auto-friend on signup,
  * automated welcome menu, and auto-responder.
  *

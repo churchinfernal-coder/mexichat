@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { Capacitor } from '@capacitor/core';
 import OfflineBanner from '@/components/chat/OfflineBanner';
 import { CallProvider } from '@/contexts/CallContext';
 import NotificationProvider from '@/components/NotificationProvider';
@@ -72,6 +73,8 @@ const queryClient = new QueryClient({
 // ROUTES
 // ===============================================================================
 
+const isNativeApp = Capacitor.isNativePlatform();
+
 const AppRoutes: React.FC = () => {
   const { user, loading } = useAuth();
 
@@ -86,8 +89,13 @@ const AppRoutes: React.FC = () => {
         <Route path="privacidad" element={<PrivacyPolicy />} />
         <Route path="terminos" element={<TermsOfService />} />
 
-        {/* Landing page for visitors, home for logged-in */}
-        <Route index element={user ? <Navigate to="/home" replace /> : <Landing />} />
+        {/* Native: skip Landing, go straight to home or auth */}
+        {/* Web: show Landing for visitors, redirect logged-in to home */}
+        <Route index element={
+          isNativeApp
+            ? <Navigate to={user ? '/home' : '/auth'} replace />
+            : (user ? <Navigate to="/home" replace /> : <Landing />)
+        } />
 
         {/* Home screen -- icon grid (authenticated) */}
         <Route path="home" element={
@@ -199,7 +207,7 @@ const AppInner: React.FC = () => {
       {/* Inactivity lock overlay */}
       {showInactivityLock && (
         <BiometricLockScreen
-          reason="Sesion inactiva — verifica tu identidad"
+          reason="Sesion inactiva â€” verifica tu identidad"
           onUnlocked={() => biometric.unlockInactivity()}
           onPinFallback={(pin) => {
             const stored = localStorage.getItem('mc_chat_lock_pin');
