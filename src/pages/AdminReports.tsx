@@ -31,9 +31,32 @@ const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: st
 };
 
 const REASON_LABELS: Record<string, string> = {
-  spam: 'Spam', harassment: 'Acoso', fraud: 'Fraude', inappropriate: 'Contenido inapropiado',
-  impersonation: 'Suplantacion', violence: 'Violencia', other: 'Otro',
+  csam: 'Explotacion menores', extortion: 'Extorsion', terrorism: 'Terrorismo', human_trafficking: 'Trata de personas',
+  self_harm: 'Autolesion', fraud: 'Fraude', identity_theft: 'Suplantacion', doxxing: 'Doxxing',
+  revenge_porn: 'Porno no consentido', drug_sales: 'Venta drogas', weapons: 'Armas',
+  harassment: 'Acoso', hate_speech: 'Discurso de odio', threats: 'Amenazas', underage: 'Menor de edad',
+  sexual_harassment: 'Acoso sexual', spam: 'Spam', fake_profile: 'Perfil falso',
+  inappropriate: 'Contenido inapropiado', other: 'Otro', scam: 'Estafa',
+  impersonation: 'Suplantacion', violence: 'Violencia',
 };
+
+const SEVERITY_BADGE: Record<string, { label: string; color: string; bg: string }> = {
+  critical: { label: 'CRITICO', color: '#dc2626', bg: 'rgba(220,38,38,0.15)' },
+  high: { label: 'ALTO', color: '#ea580c', bg: 'rgba(234,88,12,0.15)' },
+  medium: { label: 'MEDIO', color: '#d97706', bg: 'rgba(217,119,6,0.15)' },
+  low: { label: 'BAJO', color: '#6b7280', bg: 'rgba(107,114,128,0.15)' },
+};
+
+function parseSeverity(details: string | null, reason: string): string {
+  if (details) {
+    try { var d = JSON.parse(details); if (d.severity) return d.severity; } catch {}
+  }
+  var r = reason.toLowerCase();
+  if (r.includes('csam') || r.includes('extortion') || r.includes('terrorism') || r.includes('trafficking') || r.includes('self_harm')) return 'critical';
+  if (r.includes('fraud') || r.includes('identity') || r.includes('doxxing') || r.includes('revenge') || r.includes('drug') || r.includes('weapon')) return 'high';
+  if (r.includes('harassment') || r.includes('hate') || r.includes('threat') || r.includes('underage') || r.includes('sexual')) return 'medium';
+  return 'low';
+}
 
 export default function AdminReports() {
   const { isAdmin } = useAuth();
@@ -205,7 +228,11 @@ export default function AdminReports() {
                         </span>
                       </div>
                       <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
-                        Reportado por: {r.reporter_name} | Razon: {REASON_LABELS[r.reason] || r.reason} | {new Date(r.created_at).toLocaleDateString('es-MX')}
+                        Reportado por: {r.reporter_name} | {REASON_LABELS[r.reason?.replace(/\[|\]/g,'').split(']')[0]?.trim() || ''] || r.reason} | {new Date(r.created_at).toLocaleDateString('es-MX')}
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                        {(() => { const sev = parseSeverity(r.details, r.reason); const badge = SEVERITY_BADGE[sev]; return badge ? <span style={{ background: badge.bg, color: badge.color, padding: '1px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 700 }}>{badge.label}</span> : null; })()}
+                        {(() => { try { const d = JSON.parse(r.details || '{}'); return d.evidence_count > 0 ? <span style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', padding: '1px 8px', borderRadius: '12px', fontSize: '10px', fontWeight: 600 }}>{d.evidence_count} evidencia(s)</span> : null; } catch { return null; } })()}
                       </div>
                     </div>
                     <ChevronDown size={18} style={{ color: '#64748b', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />

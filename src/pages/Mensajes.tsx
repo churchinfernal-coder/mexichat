@@ -1481,7 +1481,7 @@ const Mensajes: React.FC = () => {
       <ConfirmDialog open={confirmDialog.open} title={confirmDialog.title} description={confirmDialog.description}
         variant={confirmDialog.variant} onConfirm={confirmDialog.onConfirm} onCancel={() => setConfirmDialog(prev => ({ ...prev, open: false }))} />
 
-      <ReportDialog open={reportDialog.open} userName={reportDialog.userName} onSubmit={handleReport} onCancel={() => setReportDialog({ open: false, userName: '' })} />
+      <ReportDialog open={reportDialog.open} userName={reportDialog.userName} onSubmit={(cat: string, reason: string, sev: string, evidence: string[]) => handleReport(cat, reason, sev, evidence)} onCancel={() => setReportDialog({ open: false, userName: '' })} />
 
       {/* ────────── */}
       {activeConvId && (
