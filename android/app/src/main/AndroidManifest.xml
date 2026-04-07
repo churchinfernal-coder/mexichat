@@ -9,6 +9,8 @@
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false"
         android:networkSecurityConfig="@xml/network_security_config">
+
+        <!-- Main Capacitor Activity -->
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -30,6 +32,37 @@
                 <data android:scheme="mexichat" />
             </intent-filter>
         </activity>
+
+        <!-- Full-Screen Incoming Call Activity (shows over lock screen) -->
+        <activity
+            android:name=".IncomingCallActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+
+        <!-- FCM Messaging Service (handles data messages when app is killed) -->
+        <service
+            android:name=".MexiChatMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Boot Receiver (recreates notification channels after reboot) -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- File Provider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities=".fileprovider"
@@ -40,6 +73,8 @@
                 android:resource="@xml/file_paths" />
         </provider>
     </application>
+
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -61,6 +96,9 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Hardware features (optional) -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
