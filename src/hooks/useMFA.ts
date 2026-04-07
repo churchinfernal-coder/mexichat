@@ -40,7 +40,7 @@ export function useMFA() {
 
       const totpFactors = data.totp || [];
       const verifiedFactor = totpFactors.find(f => f.status === 'verified');
-      const unverifiedFactor = totpFactors.find(f => f.status === 'unverified');
+      const unverifiedFactor = totpFactors.find(f => (f.status as string) === 'unverified');
 
       setState(prev => ({
         ...prev,

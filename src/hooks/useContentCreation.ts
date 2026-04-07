@@ -8,6 +8,40 @@
 import { useState, useCallback } from 'react';
 import { mexivanza } from '@/integrations/mexivanza/client';
 
+// ═══ Enterprise Validators & Media Type Constants ═══
+
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif'];
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+const MEDIA_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
+
+/** Validate text content — XSS prevention + length enforcement */
+function validateTextContent(text: string, fieldName: string): void {
+  if (!text || typeof text !== 'string') throw new Error(`${fieldName}: contenido requerido`);
+  const trimmed = text.trim();
+  if (trimmed.length < 1) throw new Error(`${fieldName}: contenido requerido`);
+  if (trimmed.length > 5000) throw new Error(`${fieldName}: maximo 5000 caracteres`);
+  // Block script injection
+  if (/<script/i.test(trimmed)) throw new Error(`${fieldName}: contenido no permitido`);
+}
+
+/** Validate file size in MB */
+function validateFileSize(file: File, maxMB: number): void {
+  if (!file) throw new Error('Archivo requerido');
+  const sizeMB = file.size / (1024 * 1024);
+  if (sizeMB > maxMB) throw new Error(`Archivo muy grande: ${sizeMB.toFixed(1)}MB (max ${maxMB}MB)`);
+  if (file.size === 0) throw new Error('Archivo vacio');
+}
+
+/** Validate file MIME type against allowed list */
+function validateFileType(file: File, allowedTypes: string[]): void {
+  if (!file) throw new Error('Archivo requerido');
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error(`Tipo de archivo no permitido: ${file.type}`);
+  }
+}
+
+
+
 // ─── Media Upload ───────────────────────────────────────────────────────────
 
 async function uploadMedia(

@@ -17,8 +17,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { supabase as typedSupabase } from '@/integrations/supabase/client';
-import type { TxStatus, Provider } from '@/lib/mercadopago';
-type TxProvider = Provider;
+import type { TxStatus, TxProvider } from '@/lib/mercadopago';
+// TxProvider imported directly from mercadopago
 
 export type { TxStatus, TxProvider };
 

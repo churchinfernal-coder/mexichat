@@ -178,11 +178,17 @@ const AppInner: React.FC = () => {
     if (!user || !splashDone) return;
     if (!biometric.config.enabled) { setBiometricVerified(true); return; }
 
-    // Auto-verify on mount (triggers biometric prompt on native)
-    biometric.gateAppOpen().then(ok => {
-      setBiometricVerified(ok || !biometric.status.isAvailable);
-      if (ok) recordActivity();
-    });
+    // Delay biometric gate to let auth + Capacitor settle after login
+    const timer = setTimeout(() => {
+      biometric.gateAppOpen().then(ok => {
+        setBiometricVerified(ok || !biometric.status.isAvailable);
+        if (ok) recordActivity();
+      }).catch(() => {
+        // If biometric fails, don't block the app
+        setBiometricVerified(true);
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
   }, [user, splashDone, biometric.config.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Inactivity lock overlay

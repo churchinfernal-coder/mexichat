@@ -1246,8 +1246,8 @@ export const Auth = () => {
           description: t.signedIn,
         });
 
-        // Safe navigation with delay to ensure auth state is synced
-        await safeNavigate('/', 800);
+        // Safe navigation with longer delay for Capacitor — auth state needs time to propagate
+        await safeNavigate('/', 2000);
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
         dispatch({

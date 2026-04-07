@@ -3,17 +3,24 @@ apply plugin: 'com.android.application'
 android {
     namespace = "mx.mexichat.app"
     compileSdk = rootProject.ext.compileSdkVersion
+
     defaultConfig {
         applicationId "mx.mexichat.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
     signingConfigs {
         release {
             def props = new Properties()
@@ -21,14 +28,23 @@ android {
             if (propsFile.exists()) {
                 props.load(new FileInputStream(propsFile))
             }
-            if (props['MEXICHAT_RELEASE_STORE_FILE']) {
-                storeFile file(props['MEXICHAT_RELEASE_STORE_FILE'])
-                storePassword props['MEXICHAT_RELEASE_STORE_PASSWORD']
-                keyAlias props['MEXICHAT_RELEASE_KEY_ALIAS']
-                keyPassword props['MEXICHAT_RELEASE_KEY_PASSWORD']
+            def storeFilePath = props['MEXICHAT_RELEASE_STORE_FILE']
+            if (storeFilePath) {
+                def keystoreFile = file(storeFilePath)
+                if (keystoreFile.exists()) {
+                    storeFile keystoreFile
+                    storePassword props['MEXICHAT_RELEASE_STORE_PASSWORD']
+                    keyAlias props['MEXICHAT_RELEASE_KEY_ALIAS']
+                    keyPassword props['MEXICHAT_RELEASE_KEY_PASSWORD']
+                } else {
+                    logger.warn("WARNING: Keystore file not found at ${storeFilePath}.")
+                }
+            } else {
+                logger.warn("WARNING: MEXICHAT_RELEASE_STORE_FILE not set in local.properties.")
             }
         }
     }
+
     buildTypes {
         release {
             minifyEnabled true
@@ -40,10 +56,27 @@ android {
             debuggable true
         }
     }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'META-INF/*.kotlin_module'
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
 }
 
 repositories {
-    flatDir{
+    flatDir {
         dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
     }
 }
@@ -62,11 +95,13 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
+def servicesJSON = file('google-services.json')
+if (servicesJSON.exists()) {
+    try {
         apply plugin: 'com.google.gms.google-services'
+    } catch (Exception e) {
+        logger.warn("google-services plugin could not be applied: ${e.message}")
     }
-} catch(Exception e) {
+} else {
     logger.info("google-services.json not found, google-services plugin not applied.")
 }

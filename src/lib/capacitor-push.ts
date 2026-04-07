@@ -1,205 +1,362 @@
 ﻿/**
- * MEXICHAT - Capacitor Native Push Notifications (Hardened v3)
+ * MEXICHAT — Capacitor Native Push Notifications (Hardened v4)
  *
- * CRITICAL: Never crash the app. Push is best-effort.
- * Permission is requested lazily, not on startup.
+ * GUARANTEES:
+ * - Never crashes the app under any circumstance
+ * - Push is best-effort — failure is silent
+ * - No duplicate listeners — all listeners registered exactly once
+ * - No race conditions — mutex flag set synchronously before async work
+ * - Permission is checked before requesting
+ * - SPA-safe navigation (CustomEvent, never window.location.href)
  */
 
-import { Capacitor } from '@capacitor/core';
-import { supabase } from '@/integrations/supabase/client';
+import { Capacitor } from "@capacitor/core";
+import { supabase } from "@/integrations/supabase/client";
+
+// ===============================================================================
+// PLATFORM DETECTION (computed once at module load)
+// ===============================================================================
 
 export const isNative = Capacitor.isNativePlatform();
-export const isIOS = Capacitor.getPlatform() === 'ios';
-export const isAndroid = Capacitor.getPlatform() === 'android';
+export const isIOS = Capacitor.getPlatform() === "ios";
+export const isAndroid = Capacitor.getPlatform() === "android";
 
-let PushNotificationsPlugin: any = null;
-let LocalNotificationsPlugin: any = null;
-let HapticsPlugin: any = null;
-let pluginsLoaded = false;
+// ===============================================================================
+// PLUGIN STATE
+// ===============================================================================
 
-async function loadNativePlugins(): Promise<boolean> {
-  if (!isNative) return false;
-  if (pluginsLoaded) return !!PushNotificationsPlugin;
-  try {
-    const [pushMod, localMod, hapticsMod] = await Promise.allSettled([
-      import('@capacitor/push-notifications'),
-      import('@capacitor/local-notifications'),
-      import('@capacitor/haptics'),
-    ]);
-    if (pushMod.status === 'fulfilled') PushNotificationsPlugin = pushMod.value.PushNotifications;
-    if (localMod.status === 'fulfilled') LocalNotificationsPlugin = localMod.value.LocalNotifications;
-    if (hapticsMod.status === 'fulfilled') HapticsPlugin = hapticsMod.value.Haptics;
-    pluginsLoaded = true;
-    return !!PushNotificationsPlugin;
-  } catch {
-    console.warn('[CapPush] Failed to load native plugins');
-    pluginsLoaded = true;
-    return false;
-  }
+let _pushPlugin: any = null;
+let _localPlugin: any = null;
+let _hapticsPlugin: any = null;
+let _pluginsLoaded = false;
+let _pluginLoadPromise: Promise<boolean> | null = null;
+
+// Registration state — synchronous flag prevents race conditions
+let _registering = false;
+let _registered = false;
+let _listenersAttached = false;
+
+// Vibration state
+let _vibrateIntervalId: ReturnType<typeof setInterval> | null = null;
+let _vibrateTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+// Notification ID counter (unique per session)
+let _notificationIdCounter = Math.floor(Math.random() * 100000);
+
+// ===============================================================================
+// PLUGIN LOADING
+// ===============================================================================
+
+function loadNativePlugins(): Promise<boolean> {
+  if (!isNative) return Promise.resolve(false);
+  if (_pluginsLoaded) return Promise.resolve(!!_pushPlugin);
+  if (_pluginLoadPromise) return _pluginLoadPromise;
+
+  _pluginLoadPromise = Promise.allSettled([
+    import("@capacitor/push-notifications"),
+    import("@capacitor/local-notifications"),
+    import("@capacitor/haptics"),
+  ])
+    .then(([pushMod, localMod, hapticsMod]) => {
+      if (pushMod.status === "fulfilled") _pushPlugin = pushMod.value.PushNotifications;
+      if (localMod.status === "fulfilled") _localPlugin = localMod.value.LocalNotifications;
+      if (hapticsMod.status === "fulfilled") _hapticsPlugin = hapticsMod.value.Haptics;
+      _pluginsLoaded = true;
+      return !!_pushPlugin;
+    })
+    .catch(() => {
+      console.warn("[CapPush] Failed to load native plugins");
+      _pluginsLoaded = true;
+      return false;
+    });
+
+  return _pluginLoadPromise;
 }
 
-let pushRegistered = false;
+// ===============================================================================
+// LISTENER REGISTRATION (exactly once, never duplicated)
+// ===============================================================================
 
-export async function registerNativePush(userId: string): Promise<void> {
-  if (!isNative || pushRegistered) return;
+function attachListeners(userId: string): void {
+  if (_listenersAttached || !_pushPlugin) return;
+  _listenersAttached = true;
 
-  // Delay push registration to avoid blocking app startup
-  await new Promise(r => setTimeout(r, 3000));
-
-  let loaded = false;
+  // --- Token received from FCM/APNs ---
   try {
-    loaded = await loadNativePlugins();
-  } catch {
-    console.warn('[CapPush] Plugin load failed - skipping push');
-    return;
-  }
-
-  if (!loaded || !PushNotificationsPlugin) {
-    console.warn('[CapPush] Push plugin not available - Web Push will handle notifications');
-    return;
-  }
-
-  try {
-    // 1. Check current permission status first (non-blocking)
-    let permStatus: any;
-    try {
-      permStatus = await PushNotificationsPlugin.checkPermissions();
-    } catch {
-      console.warn('[CapPush] Cannot check permissions - skipping');
-      return;
-    }
-
-    // 2. Only request permission if not already decided
-    if (permStatus.receive === 'denied') {
-      console.warn('[CapPush] Permission previously denied - skipping');
-      return;
-    }
-
-    if (permStatus.receive === 'prompt' || permStatus.receive === 'prompt-with-rationale') {
+    _pushPlugin.addListener("registration", async (token: { value: string }) => {
       try {
-        const permResult = await PushNotificationsPlugin.requestPermissions();
-        if (permResult.receive !== 'granted') {
-          console.warn('[CapPush] Permission not granted - skipping');
-          return;
-        }
-      } catch {
-        console.warn('[CapPush] Permission request failed - skipping');
-        return;
-      }
-    }
+        if (!token || !token.value) return;
+        console.log("[CapPush] Token received:", token.value.slice(0, 20) + "...");
 
-    // 3. Try to register with FCM/APNs
-    try {
-      await PushNotificationsPlugin.register();
-    } catch (regErr: any) {
-      console.warn('[CapPush] FCM/APNs registration failed:', regErr?.message || regErr);
-      return;
-    }
-
-    // 4. Listen for registration token
-    PushNotificationsPlugin.addListener('registration', async (token: { value: string }) => {
-      console.log('[CapPush] Token received:', token.value.slice(0, 20) + '...');
-      try {
-        const platform = isIOS ? 'ios' : 'android';
+        const platform = isIOS ? "ios" : "android";
         await (supabase
-          .from('push_subscriptions' as any)
-          .upsert({
-            user_id: userId,
-            endpoint: 'native:' + platform + ':' + token.value,
-            p256dh: platform,
-            auth: token.value,
-            updated_at: new Date().toISOString(),
-          } as any, { onConflict: 'user_id,endpoint' }) as any);
-        console.log('[CapPush] Token stored in DB');
-        pushRegistered = true;
+          .from("push_subscriptions" as any)
+          .upsert(
+            {
+              user_id: userId,
+              endpoint: "native:" + platform + ":" + token.value,
+              p256dh: platform,
+              auth: token.value,
+              updated_at: new Date().toISOString(),
+            } as any,
+            { onConflict: "user_id,endpoint" }
+          ) as any);
+
+        console.log("[CapPush] Token stored in DB");
+        _registered = true;
       } catch (err) {
-        console.error('[CapPush] DB store failed:', err);
+        console.error("[CapPush] DB store failed:", err);
       }
     });
-
-    // 5. Registration error - not a crash
-    PushNotificationsPlugin.addListener('registrationError', (err: any) => {
-      console.warn('[CapPush] Registration error (non-fatal):', err);
-    });
-
-    // 6. Foreground notification
-    PushNotificationsPlugin.addListener('pushNotificationReceived', async (notification: any) => {
-      console.log('[CapPush] Foreground push:', notification.title);
-      const data = notification.data || {};
-      const type = data.type || 'message';
-      const isCall = type === 'call' || type === 'incoming_call' || type === 'video_call';
-
-      if (isCall && HapticsPlugin) {
-        try {
-          await HapticsPlugin.impact({ style: 'Heavy' });
-          const vibrateInterval = setInterval(async () => {
-            try { await HapticsPlugin.impact({ style: 'Heavy' }); } catch {}
-          }, 3000);
-          setTimeout(() => clearInterval(vibrateInterval), 30000);
-          (window as any).__callVibrateInterval = vibrateInterval;
-        } catch {}
-      }
-
-      if (isCall) {
-        window.dispatchEvent(new CustomEvent('mc-native-incoming-call', {
-          detail: {
-            callerId: data.callerId || data.fromUserId || '',
-            callerName: data.callerName || notification.title || '',
-            callType: data.callType || 'audio',
-            conversationId: data.conversationId || '',
-          },
-        }));
-      } else if (LocalNotificationsPlugin) {
-        try {
-          await LocalNotificationsPlugin.schedule({
-            notifications: [{
-              title: notification.title || 'MexiChat',
-              body: notification.body || 'Nuevo mensaje',
-              id: Date.now(),
-              schedule: { at: new Date(Date.now() + 100) },
-              extra: data,
-            }],
-          });
-        } catch {}
-      }
-    });
-
-    // 7. Notification tapped
-    PushNotificationsPlugin.addListener('pushNotificationActionPerformed', (action: any) => {
-      console.log('[CapPush] Notification tapped:', action.notification?.title);
-      const data = action.notification?.data || {};
-      const type = data.type || 'message';
-      const isCall = type === 'call' || type === 'incoming_call' || type === 'video_call';
-      stopCallVibration();
-      window.dispatchEvent(new CustomEvent('mc-navigate-conversation', {
-        detail: {
-          conversationId: data.conversationId || '',
-          fromUserId: isCall ? (data.callerId || data.fromUserId || '') : (data.fromUserId || ''),
-          autoAcceptCall: isCall && action.actionId === 'answer',
-        },
-      }));
-    });
-
-    console.log('[CapPush] Native push initialized');
   } catch (err) {
-    // ABSOLUTE LAST RESORT - never crash
-    console.error('[CapPush] Init failed (non-fatal):', err);
+    console.warn("[CapPush] Failed to attach registration listener:", err);
+  }
+
+  // --- Registration error ---
+  try {
+    _pushPlugin.addListener("registrationError", (err: any) => {
+      console.warn("[CapPush] Registration error (non-fatal):", err);
+    });
+  } catch (err) {
+    console.warn("[CapPush] Failed to attach registrationError listener:", err);
+  }
+
+  // --- Foreground notification received ---
+  try {
+    _pushPlugin.addListener("pushNotificationReceived", async (notification: any) => {
+      try {
+        if (!notification) return;
+        console.log("[CapPush] Foreground push:", notification.title);
+
+        const data = notification.data || {};
+        const type = data.type || "message";
+        const isCall = type === "call" || type === "incoming_call" || type === "video_call";
+
+        if (isCall) {
+          startCallVibration();
+          window.dispatchEvent(
+            new CustomEvent("mc-native-incoming-call", {
+              detail: {
+                callerId: data.callerId || data.fromUserId || "",
+                callerName: data.callerName || notification.title || "",
+                callType: data.callType || "audio",
+                conversationId: data.conversationId || "",
+              },
+            })
+          );
+        } else if (_localPlugin) {
+          try {
+            _notificationIdCounter += 1;
+            await _localPlugin.schedule({
+              notifications: [
+                {
+                  title: notification.title || "MexiChat",
+                  body: notification.body || "Nuevo mensaje",
+                  id: _notificationIdCounter,
+                  schedule: { at: new Date(Date.now() + 100) },
+                  extra: data,
+                },
+              ],
+            });
+          } catch (localErr) {
+            console.warn("[CapPush] Local notification schedule failed:", localErr);
+          }
+        }
+      } catch (err) {
+        console.warn("[CapPush] Foreground notification handler error:", err);
+      }
+    });
+  } catch (err) {
+    console.warn("[CapPush] Failed to attach pushNotificationReceived listener:", err);
+  }
+
+  // --- Notification tapped ---
+  try {
+    _pushPlugin.addListener("pushNotificationActionPerformed", (action: any) => {
+      try {
+        if (!action || !action.notification) return;
+        console.log("[CapPush] Notification tapped:", action.notification.title);
+
+        const data = action.notification.data || {};
+        const type = data.type || "message";
+        const isCall = type === "call" || type === "incoming_call" || type === "video_call";
+
+        stopCallVibration();
+
+        window.dispatchEvent(
+          new CustomEvent("mc-navigate-conversation", {
+            detail: {
+              conversationId: data.conversationId || "",
+              fromUserId: isCall
+                ? data.callerId || data.fromUserId || ""
+                : data.fromUserId || "",
+              autoAcceptCall: isCall && action.actionId === "answer",
+            },
+          })
+        );
+      } catch (err) {
+        console.warn("[CapPush] Notification tap handler error:", err);
+      }
+    });
+  } catch (err) {
+    console.warn("[CapPush] Failed to attach pushNotificationActionPerformed listener:", err);
   }
 }
 
-export async function unregisterNativePush(): Promise<void> {
-  if (!isNative || !PushNotificationsPlugin) return;
+// ===============================================================================
+// VIBRATION MANAGEMENT
+// ===============================================================================
+
+function startCallVibration(): void {
+  // Clear any existing vibration first
+  stopCallVibration();
+
+  if (!_hapticsPlugin) return;
+
   try {
-    await PushNotificationsPlugin.removeAllListeners();
-    pushRegistered = false;
-  } catch {}
+    // Initial vibration
+    _hapticsPlugin.impact({ style: "Heavy" }).catch(() => {});
+
+    // Repeated vibration every 3 seconds
+    _vibrateIntervalId = setInterval(() => {
+      try {
+        if (_hapticsPlugin) {
+          _hapticsPlugin.impact({ style: "Heavy" }).catch(() => {});
+        }
+      } catch {}
+    }, 3000);
+
+    // Auto-stop after 30 seconds (unanswered call)
+    _vibrateTimeoutId = setTimeout(() => {
+      stopCallVibration();
+    }, 30000);
+  } catch {
+    // Haptics not available — silent
+  }
 }
 
 export function stopCallVibration(): void {
   try {
-    if ((window as any).__callVibrateInterval) {
-      clearInterval((window as any).__callVibrateInterval);
-      (window as any).__callVibrateInterval = null;
+    if (_vibrateIntervalId !== null) {
+      clearInterval(_vibrateIntervalId);
+      _vibrateIntervalId = null;
     }
-  } catch {}
+    if (_vibrateTimeoutId !== null) {
+      clearTimeout(_vibrateTimeoutId);
+      _vibrateTimeoutId = null;
+    }
+  } catch {
+    // Never crash on cleanup
+  }
+}
+
+// ===============================================================================
+// PUBLIC API
+// ===============================================================================
+
+/**
+ * Register for native push notifications.
+ * Call after successful authentication with the user's ID.
+ *
+ * - No-op on web
+ * - No-op if already registered
+ * - Mutex prevents concurrent registration attempts
+ * - Listeners are attached exactly once
+ */
+export async function registerNativePush(userId: string): Promise<void> {
+  if (!isNative) return;
+  if (_registered || _registering) return;
+  if (!userId) return;
+
+  // Set synchronous flag BEFORE any async work — prevents race condition
+  _registering = true;
+
+  try {
+    // Load plugins
+    let loaded = false;
+    try {
+      loaded = await loadNativePlugins();
+    } catch {
+      console.warn("[CapPush] Plugin load failed — skipping push");
+      _registering = false;
+      return;
+    }
+
+    if (!loaded || !_pushPlugin) {
+      console.warn("[CapPush] Push plugin not available");
+      _registering = false;
+      return;
+    }
+
+    // 1. Check current permission status
+    let permStatus: any;
+    try {
+      permStatus = await _pushPlugin.checkPermissions();
+    } catch {
+      console.warn("[CapPush] Cannot check permissions — skipping");
+      _registering = false;
+      return;
+    }
+
+    // 2. Handle permission state
+    if (permStatus.receive === "denied") {
+      console.warn("[CapPush] Permission previously denied — skipping");
+      _registering = false;
+      return;
+    }
+
+    if (permStatus.receive === "prompt" || permStatus.receive === "prompt-with-rationale") {
+      try {
+        const permResult = await _pushPlugin.requestPermissions();
+        if (permResult.receive !== "granted") {
+          console.warn("[CapPush] Permission not granted — skipping");
+          _registering = false;
+          return;
+        }
+      } catch {
+        console.warn("[CapPush] Permission request failed — skipping");
+        _registering = false;
+        return;
+      }
+    }
+
+    // 3. Attach listeners BEFORE registering (so we catch the token callback)
+    attachListeners(userId);
+
+    // 4. Register with FCM/APNs
+    try {
+      await _pushPlugin.register();
+    } catch (regErr: any) {
+      console.warn("[CapPush] FCM/APNs registration failed:", regErr && regErr.message ? regErr.message : regErr);
+      _registering = false;
+      return;
+    }
+
+    console.log("[CapPush] Native push initialized");
+  } catch (err) {
+    // ABSOLUTE LAST RESORT — never crash
+    console.error("[CapPush] Init failed (non-fatal):", err);
+    _registering = false;
+  }
+}
+
+/**
+ * Unregister push notifications.
+ * Call on logout to clean up listeners and reset state.
+ */
+export async function unregisterNativePush(): Promise<void> {
+  if (!isNative) return;
+
+  try {
+    if (_pushPlugin && _pushPlugin.removeAllListeners) {
+      await _pushPlugin.removeAllListeners();
+    }
+  } catch {
+    // Never crash on cleanup
+  }
+
+  stopCallVibration();
+  _registered = false;
+  _registering = false;
+  _listenersAttached = false;
 }

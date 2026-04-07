@@ -147,7 +147,7 @@ export default function Pagos() {
 
       // Biometric gate for payment confirmation
     const bioOk = await verifyForPayment(numAmount);
-    if (!bioOk) { setFormError('Verificacion biometrica cancelada'); setIsProcessing(false); return; }
+    if (!bioOk) { setFormError('Verificacion biometrica cancelada'); return; }
 
     if (provider === 'oxxo') {
         const result = await createOXXOPayment({
@@ -239,8 +239,8 @@ export default function Pagos() {
   const [mpConnected, setMpConnected] = useState<boolean | null>(null);
   useEffect(() => {
     if (!user?.id) return;
-    supabase.from('mp_auth').select('id').eq('user_id', user.id).eq('is_active', true).maybeSingle()
-      .then(({ data }) => setMpConnected(!!data));
+    (supabase.from('mp_auth' as any).select('id').eq('user_id', user.id).eq('is_active', true).maybeSingle() as any)
+      .then(({ data }: any) => setMpConnected(!!data));
   }, [user?.id]);
 
   // ----------

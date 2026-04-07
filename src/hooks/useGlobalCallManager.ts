@@ -100,12 +100,17 @@ export function useGlobalCallManager() {
     }
   }, []);
 
-  // ─── Initialize WebRTC service ───
+  // ─── Initialize WebRTC service (delayed to let auth settle in Capacitor) ───
   useEffect(() => {
     if (!userId) return;
-    webRTCService.ensureInitialized().catch(err => {
-      console.error('[GlobalCallManager] WebRTC init failed:', err);
-    });
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      webRTCService.ensureInitialized().catch(err => {
+        if (!cancelled) console.error('[GlobalCallManager] WebRTC init failed:', err);
+      });
+    }, 2500);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [userId]);
 
   // ─── SOLE call-signal listener (replaces NotificationProvider's) ───
@@ -422,18 +427,19 @@ export function useGlobalCallManager() {
 
       console.log('[GlobalCallManager] ❌ Push reject call from:', detail.fromUserId);
 
-      // If we have an incoming call from this caller, reject it
-      if (incomingCallRef.current?.from === detail.fromUserId) {
-        stopRingtone();
-        clearCallTimeout();
-        if (incomingCallRef.current.callId) {
-          webRTCService.rejectCall(incomingCallRef.current.callId);
-        }
-        if (incomingCallRef.current.sessionId) {
-          callSession.markDeclined(incomingCallRef.current.sessionId, userId);
-        }
-        clearIncomingCall();
+      // Snapshot ref — null-safe access throughout
+      const current = incomingCallRef.current;
+      if (!current || current.from !== detail.fromUserId) return;
+
+      stopRingtone();
+      clearCallTimeout();
+      if (current.callId) {
+        webRTCService.rejectCall(current.callId);
       }
+      if (current.sessionId && userId) {
+        callSession.markDeclined(current.sessionId, userId);
+      }
+      clearIncomingCall();
     };
 
     const handleNavigateConversation = (evt: Event) => {

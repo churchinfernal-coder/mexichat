@@ -83,7 +83,11 @@ class WebRTCService {
   public async ensureInitialized(): Promise<void> {
     if (this.initialized && this.channel) return;
     if (this.initializingPromise) return this.initializingPromise;
-    this.initializingPromise = this._initialize();
+    this.initializingPromise = this._initialize().catch(err => {
+      this.initializingPromise = null;
+      this.initialized = false;
+      console.warn('[webrtc] Init failed gracefully:', err?.message || err);
+    });
     await this.initializingPromise;
   }
 

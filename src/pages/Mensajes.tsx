@@ -1032,7 +1032,7 @@ const Mensajes: React.FC = () => {
     const mentionedUsernames = mentions.extractMentions(content);
     const insertObj: Record<string, unknown> = { group_id: gId, sender_id: myUserId, content: content || '' };
     if (mediaUrl) { insertObj.media_url = mediaUrl; insertObj.media_type = mediaType ?? null; }
-    const { error } = await supabase.from('group_messages').insert(insertObj);
+    const { error } = await supabase.from('group_messages').insert(insertObj as any);
     if (error) { toast.error('Error al enviar'); return; }
     await supabase.from('groups').update({
       last_message: content || '\uD83D\uDCCE Archivo',
@@ -1241,7 +1241,7 @@ const Mensajes: React.FC = () => {
     if (!myUserId || !forwardingMessage) return;
     const fwdObj: Record<string, unknown> = { group_id: targetGroupId, sender_id: myUserId, content: forwardingMessage.content || '' };
     if (forwardingMessage.mediaUrl) { fwdObj.media_url = forwardingMessage.mediaUrl; fwdObj.media_type = forwardingMessage.mediaType ?? null; }
-    const { error } = await supabase.from('group_messages').insert(fwdObj);
+    const { error } = await supabase.from('group_messages').insert(fwdObj as any);
     if (error) { toast.error('Error al reenviar'); return; }
     await supabase.from('groups').update({
       last_message: '\u21AA ' + (forwardingMessage.content || '\uD83D\uDCCE Archivo'), last_message_at: new Date().toISOString(),
