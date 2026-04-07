@@ -1,6 +1,7 @@
 /**
- * MEXICHAT - Sound System v5 (Custom Sounds)
+ * MEXICHAT - Sound System v6 (Reliable Looping Ringtone)
  * Uses pre-generated WAV files for branded audio.
+ * Ringtone loops via interval-based replay for bulletproof looping.
  */
 
 // Audio unlock for iOS
@@ -70,26 +71,51 @@ export function playNotificationSound(type: "message" | "call" = "message") {
 export function playCallConnect() { playOneShot("connect", 0.7); }
 export function playCallEnd() { playOneShot("end", 0.7); }
 
-// Continuous ringtone
+// ═══════════════════════════════════════════════════════════════
+// CONTINUOUS RINGTONE — interval-based replay (bulletproof loop)
+// ═══════════════════════════════════════════════════════════════
+//
+// Why not just audio.loop = true?
+// Because many mobile browsers (especially iOS Safari, Samsung Internet,
+// and in-app webviews) silently stop looping after 1-2 plays. The 'ended'
+// event + manual restart is the only reliable cross-browser approach.
+
 let ringtoneAudio: HTMLAudioElement | null = null;
 let ringtoneActive = false;
+let ringtoneRestartHandler: (() => void) | null = null;
 
 export function startRingtone(type: "incoming" | "outgoing" = "incoming") {
   stopRingtone();
   ringtoneActive = true;
-  console.log("[sounds] Starting " + type + " ringtone");
+  console.log("[sounds] Starting " + type + " ringtone (loop mode)");
+
   try {
     const audio = new Audio("/sounds/" + type + ".wav");
-    audio.loop = true;
     audio.volume = type === "incoming" ? 0.85 : 0.6;
+    audio.loop = false; // We handle looping manually via 'ended' event
     audio.currentTime = 0;
+
+    // When the audio finishes, restart it if ringtone is still active
+    ringtoneRestartHandler = () => {
+      if (ringtoneActive && ringtoneAudio === audio) {
+        try {
+          audio.currentTime = 0;
+          const p = audio.play();
+          if (p) p.catch(() => {
+            console.warn("[sounds] Ringtone re-loop blocked");
+          });
+        } catch {}
+      }
+    };
+    audio.addEventListener("ended", ringtoneRestartHandler);
+
     const p = audio.play();
     if (p) p.then(() => {
       console.log("[sounds] " + type + " ringtone playing");
-      ringtoneAudio = audio;
     }).catch(err => {
       console.warn("[sounds] Ringtone blocked:", err.message);
     });
+
     ringtoneAudio = audio;
   } catch (err) {
     console.warn("[sounds] Ringtone error:", err);
@@ -100,11 +126,13 @@ export function stopRingtone() {
   ringtoneActive = false;
   if (ringtoneAudio) {
     try {
+      // Remove the restart handler first
+      if (ringtoneRestartHandler) {
+        ringtoneAudio.removeEventListener("ended", ringtoneRestartHandler);
+        ringtoneRestartHandler = null;
+      }
       ringtoneAudio.pause();
       ringtoneAudio.currentTime = 0;
-      ringtoneAudio.loop = false;
-      ringtoneAudio.removeAttribute("src");
-      ringtoneAudio.load();
     } catch {}
     ringtoneAudio = null;
   }
