@@ -53,6 +53,12 @@
             </intent-filter>
         </service>
 
+        <!-- Ongoing Call Foreground Service -->
+        <service
+            android:name=".CallForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall|microphone|camera" />
+
         <!-- Boot Receiver (recreates notification channels after reboot) -->
         <receiver
             android:name=".BootReceiver"
@@ -97,6 +103,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Hardware features (optional) -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
