@@ -341,3 +341,21 @@
 [data-mc-theme="diamond"] {
   --mc-input-bg: #f0f2f5;
 }
+
+/* --- FIX: Settings dropdown inside header inherits white text --- */
+[data-mc-theme="diamond"] .mensajes-settings-menu .mensajes-settings-item {
+  color: #111b21 !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-settings-menu .mensajes-settings-item svg {
+  color: #111b21 !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-settings-menu .mensajes-settings-item:hover {
+  background: #f0f2f5 !important;
+}
+
+[data-mc-theme="diamond"] .mensajes-settings-menu .mensajes-settings-item.danger,
+[data-mc-theme="diamond"] .mensajes-settings-menu .mensajes-settings-item.danger svg {
+  color: #ef4444 !important;
+}

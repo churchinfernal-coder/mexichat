@@ -77,12 +77,12 @@ interface GroupChatWindowProps {
   onBack: () => void;
   onAddMember: () => void;
   onRemoveMember: (userId: string) => void;
-  onPromoteMember: (userId: string, role: 'admin' | 'member') => void;
+  onPromoteMember: (userId: string, role: 'admin' | 'moderator' | 'member') => void;
   onLeaveGroup: () => void;
   onDeleteGroup: () => void;
   onEditGroup: (name: string, description: string) => void;
   onEditGroupAvatar?: (avatarUrl: string) => void;
-  myRole: 'owner' | 'admin' | 'member';
+  myRole: 'owner' | 'admin' | 'moderator' | 'member';
   // â”€â”€ v8 props â”€â”€
   onOpenInvite?: () => void;
   reactions?: MessageReactions;
@@ -498,6 +498,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
   const onlineCount = members.filter(m => m.isOnline).length;
   const grouped = groupByDate(messages);
   const isAdmin = myRole === 'owner' || myRole === 'admin';
+  const isModerator = myRole === 'owner' || myRole === 'admin' || myRole === 'moderator';
 
   return (
     <div className="mensajes-main" style={wallpaper ? { background: wallpaper } : undefined}>

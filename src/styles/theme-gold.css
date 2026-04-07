@@ -339,3 +339,35 @@
 [data-mc-theme="gold"] {
   --mc-input-bg: #f1f5f9;
 }
+
+/* --- FIX: Settings dropdown inside header inherits white text --- */
+[data-mc-theme="gold"] .mensajes-settings-menu .mensajes-settings-item {
+  color: #1a1a2e !important;
+}
+
+[data-mc-theme="gold"] .mensajes-settings-menu .mensajes-settings-item svg {
+  color: #1a1a2e !important;
+}
+
+[data-mc-theme="gold"] .mensajes-settings-menu .mensajes-settings-item:hover {
+  background: #f0f4f8 !important;
+  color: #1a1a2e !important;
+}
+
+[data-mc-theme="gold"] .mensajes-settings-menu .mensajes-settings-item.danger,
+[data-mc-theme="gold"] .mensajes-settings-menu .mensajes-settings-item.danger svg {
+  color: #ef4444 !important;
+}
+
+/* --- FIX: Message timestamps on blue gradient background --- */
+[data-mc-theme="gold"] .mensajes-msg-meta .mensajes-msg-time {
+  color: rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-msg.sent .mensajes-msg-meta .mensajes-msg-time {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-msg.received .mensajes-msg-meta .mensajes-msg-time {
+  color: rgba(0, 0, 0, 0.45) !important;
+}

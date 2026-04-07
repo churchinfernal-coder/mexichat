@@ -1173,10 +1173,10 @@ const Mensajes: React.FC = () => {
     });
   }, [activeGroupId, loadGroupMessages]);
 
-  const handlePromoteMember = useCallback(async (userId: string, role: 'admin' | 'member') => {
+  const handlePromoteMember = useCallback(async (userId: string, role: 'admin' | 'moderator' | 'member') => {
     if (!activeGroupId) return;
     await supabase.from('group_members').update({ role }).eq('group_id', activeGroupId).eq('user_id', userId);
-    toast.success(role === 'admin' ? 'Promovido a admin' : 'Rol cambiado'); loadGroupMessages(activeGroupId);
+    toast.success(role === 'admin' ? 'Promovido a admin' : role === 'moderator' ? 'Promovido a moderador' : 'Rol cambiado'); loadGroupMessages(activeGroupId);
   }, [activeGroupId, loadGroupMessages]);
 
   const handleLeaveGroup = useCallback(() => {

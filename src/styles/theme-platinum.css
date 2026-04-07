@@ -336,3 +336,21 @@
 [data-mc-theme="platinum"] {
   --mc-input-bg: #f1f5f9;
 }
+
+/* --- FIX: Settings dropdown inside header inherits wrong colors --- */
+[data-mc-theme="platinum"] .mensajes-settings-menu .mensajes-settings-item {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-settings-menu .mensajes-settings-item svg {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-settings-menu .mensajes-settings-item:hover {
+  background: rgba(29, 78, 216, 0.06) !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-settings-menu .mensajes-settings-item.danger,
+[data-mc-theme="platinum"] .mensajes-settings-menu .mensajes-settings-item.danger svg {
+  color: #ef4444 !important;
+}
