@@ -1,6 +1,5 @@
 /**
  * MEXICHAT - Sound System v7 (Selectable Ringtones)
- * Uses pre-generated WAV files for branded audio.
  * Ringtone loops via 'ended' event for bulletproof cross-browser looping.
  */
 
@@ -9,29 +8,37 @@
 export interface RingtoneOption {
   id: string;
   name: string;
-  file: string;  // path under /sounds/ringtones/
+  nameEs: string;
+  file: string;
   emoji: string;
 }
 
 export const RINGTONE_OPTIONS: RingtoneOption[] = [
-  { id: 'default',  name: 'MexiChat',  file: '/sounds/incoming.wav',            emoji: '📱' },
-  { id: 'clasica',  name: 'Clasica',   file: '/sounds/ringtones/clasica.wav',   emoji: '📞' },
-  { id: 'moderna',  name: 'Moderna',   file: '/sounds/ringtones/moderna.wav',   emoji: '✨' },
-  { id: 'suave',    name: 'Suave',     file: '/sounds/ringtones/suave.wav',     emoji: '🌊' },
-  { id: 'marimba',  name: 'Marimba',   file: '/sounds/ringtones/marimba.wav',   emoji: '🪘' },
-  { id: 'digital',  name: 'Digital',   file: '/sounds/ringtones/digital.wav',   emoji: '🤖' },
-  { id: 'mexicana', name: 'Mexicana',  file: '/sounds/ringtones/mexicana.wav',  emoji: '🇲🇽' },
+  { id: 'default',  name: 'MexiChat',   nameEs: 'MexiChat',   file: '/sounds/incoming.wav',           emoji: '📱' },
+  { id: 'clasica',  name: 'Classic',     nameEs: 'Clasica',    file: '/sounds/ringtone-clasica.wav',   emoji: '📞' },
+  { id: 'melodia',  name: 'Melody',      nameEs: 'Melodia',    file: '/sounds/ringtone-melodia.wav',   emoji: '✨' },
+  { id: 'suave',    name: 'Soft',        nameEs: 'Suave',      file: '/sounds/ringtone-suave.wav',     emoji: '🌊' },
+  { id: 'marimba',  name: 'Marimba',     nameEs: 'Marimba',    file: '/sounds/ringtone-marimba.wav',   emoji: '🪘' },
+  { id: 'digital',  name: 'Digital',     nameEs: 'Digital',    file: '/sounds/ringtone-digital.wav',   emoji: '🤖' },
+  { id: 'urgente',  name: 'Urgent',      nameEs: 'Urgente',    file: '/sounds/ringtone-urgente.wav',   emoji: '🚨' },
 ];
+
+// Alias for RingtonePicker compatibility
+export const RINGTONES = RINGTONE_OPTIONS;
 
 const RINGTONE_STORAGE_KEY = 'mexichat_ringtone';
 
-export function getSelectedRingtone(): RingtoneOption {
+export function getSelectedRingtone(): string {
   try {
-    const id = localStorage.getItem(RINGTONE_STORAGE_KEY) || 'default';
-    return RINGTONE_OPTIONS.find(r => r.id === id) || RINGTONE_OPTIONS[0];
+    return localStorage.getItem(RINGTONE_STORAGE_KEY) || 'default';
   } catch {
-    return RINGTONE_OPTIONS[0];
+    return 'default';
   }
+}
+
+export function getSelectedRingtoneOption(): RingtoneOption {
+  const id = getSelectedRingtone();
+  return RINGTONE_OPTIONS.find(r => r.id === id) || RINGTONE_OPTIONS[0];
 }
 
 export function setSelectedRingtone(id: string): void {
@@ -132,13 +139,11 @@ export function startRingtone(type: "incoming" | "outgoing" = "incoming") {
   stopRingtone();
   ringtoneActive = true;
 
-  // For incoming calls, use the user's selected ringtone
-  // For outgoing calls, always use the standard ringback tone
   let filePath: string;
   let volume: number;
 
   if (type === "incoming") {
-    const selected = getSelectedRingtone();
+    const selected = getSelectedRingtoneOption();
     filePath = selected.file;
     volume = 0.85;
     console.log("[sounds] Starting incoming ringtone: " + selected.name);
