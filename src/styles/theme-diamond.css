@@ -336,3 +336,8 @@
 [data-mc-theme="diamond"] .mensajes-main-empty p {
   color: #667781 !important;
 }
+
+/* --- Group modals: force readable inputs --- */
+[data-mc-theme="diamond"] {
+  --mc-input-bg: #f0f2f5;
+}

@@ -676,12 +676,12 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               <div>
                 <label style={{ fontSize: '13px', color: 'var(--mc-text-muted)', marginBottom: '4px', display: 'block' }}>Nombre del grupo</label>
                 <input value={editName} onChange={(e) => setEditName(e.target.value)}
-                  style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--mc-border)', borderRadius: '8px', color: 'var(--mc-text)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 14px', background: 'var(--mc-input-bg, #f1f5f9)', border: '1px solid var(--mc-border)', borderRadius: '8px', color: 'var(--mc-text)', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div>
                 <label style={{ fontSize: '13px', color: 'var(--mc-text-muted)', marginBottom: '4px', display: 'block' }}>Descripcion</label>
                 <textarea value={editDesc} onChange={(e) => setEditDesc(e.target.value)} rows={3}
-                  style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--mc-border)', borderRadius: '8px', color: 'var(--mc-text)', fontSize: '14px', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 14px', background: 'var(--mc-input-bg, #f1f5f9)', border: '1px solid var(--mc-border)', borderRadius: '8px', color: 'var(--mc-text)', fontSize: '14px', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <button onClick={handleSaveGroupEdit} style={{ padding: '10px', background: 'var(--mc-blue)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>Guardar cambios</button>
             </div>
