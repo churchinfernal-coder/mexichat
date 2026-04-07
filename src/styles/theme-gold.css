@@ -266,3 +266,71 @@
 [data-mc-theme="gold"] .mensajes-settings-item.danger {
   color: #ef4444 !important;
 }
+
+/* --- TEXT COLOR FIXES (prevent white-on-white) --- */
+[data-mc-theme="gold"] .mensajes-sidebar-header,
+[data-mc-theme="gold"] .mensajes-sidebar-header * {
+  color: #ffffff !important;
+}
+
+[data-mc-theme="gold"] .mensajes-sidebar-user-name {
+  color: var(--gold-text-primary) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-input-area {
+  background: #ffffff !important;
+}
+
+[data-mc-theme="gold"] .mensajes-input-field {
+  color: var(--gold-text-primary) !important;
+  background: var(--gold-input-bg) !important;
+  border: 1.5px solid #e6e6e6 !important;
+}
+
+[data-mc-theme="gold"] .mensajes-input-field::placeholder {
+  color: var(--gold-text-secondary) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-input-btn {
+  color: var(--gold-text-secondary) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-input-btn:hover {
+  color: var(--gold-link) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-chat-name {
+  color: var(--gold-text-primary) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-chat-preview {
+  color: var(--gold-text-secondary) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-chat-time {
+  color: var(--gold-text-secondary) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-msg.received .mensajes-msg-bubble .mensajes-msg-text,
+[data-mc-theme="gold"] .mensajes-msg.received .mensajes-msg-bubble p {
+  color: var(--gold-text-primary) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-empty-state,
+[data-mc-theme="gold"] .mensajes-main-empty {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-main-empty h2 {
+  color: #ffffff !important;
+}
+
+[data-mc-theme="gold"] .mensajes-main-empty p {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-mc-theme="gold"] .mensajes-main-empty-icon {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}

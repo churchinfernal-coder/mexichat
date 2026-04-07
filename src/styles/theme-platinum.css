@@ -1,7 +1,8 @@
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   PLATINUM UI THEME â€” Advanced Glassmorphism
+/* ====================================================================
+   PLATINUM UI THEME -- Advanced Glassmorphism
    Modern frosted-glass with depth, blur, light refractions.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   FIXED: All text colors explicitly set to prevent white-on-white.
+   ==================================================================== */
 
 [data-mc-theme="platinum"] .mensajes-sidebar {
   background: rgba(255, 255, 255, 0.72);
@@ -19,7 +20,7 @@
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.5) 0%, rgba(241, 245, 249, 0.8) 100%);
 }
 
-/* â”€â”€â”€ Sidebar Header â”€â”€â”€ */
+/* --- Sidebar Header --- */
 [data-mc-theme="platinum"] .mensajes-sidebar-header {
   background: rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(16px);
@@ -27,19 +28,37 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* â”€â”€â”€ Tabs â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-sidebar-header,
+[data-mc-theme="platinum"] .mensajes-sidebar-header * {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-sidebar-user-name {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-sidebar-user-status {
+  color: #64748b !important;
+}
+
+/* --- Tabs --- */
 [data-mc-theme="platinum"] .mensajes-tabs {
   background: rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
+[data-mc-theme="platinum"] .mensajes-tab {
+  color: #475569 !important;
+}
+
 [data-mc-theme="platinum"] .mensajes-tab.active {
+  color: var(--mc-blue) !important;
   background: rgba(255, 255, 255, 0.6);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-/* â”€â”€â”€ Search â”€â”€â”€ */
+/* --- Search --- */
 [data-mc-theme="platinum"] .mensajes-search-wrapper {
   background: rgba(255, 255, 255, 0.55) !important;
   backdrop-filter: blur(8px);
@@ -48,7 +67,18 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-/* â”€â”€â”€ Chat Items â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-search-input,
+[data-mc-theme="platinum"] .mensajes-search-wrapper input {
+  color: #1e293b !important;
+  background: transparent !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-search-input::placeholder,
+[data-mc-theme="platinum"] .mensajes-search-wrapper input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* --- Chat Items --- */
 [data-mc-theme="platinum"] .mensajes-chat-item {
   border-radius: 12px;
   margin: 2px 6px;
@@ -68,7 +98,22 @@
   border-left: 3px solid var(--mc-blue);
 }
 
-/* â”€â”€â”€ Chat Header â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-chat-name,
+[data-mc-theme="platinum"] .mensajes-chat-item-name {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-preview,
+[data-mc-theme="platinum"] .mensajes-chat-item-message {
+  color: #64748b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-time,
+[data-mc-theme="platinum"] .mensajes-chat-item-time {
+  color: #94a3b8 !important;
+}
+
+/* --- Chat Header --- */
 [data-mc-theme="platinum"] .mensajes-chat-header {
   background: rgba(255, 255, 255, 0.72) !important;
   backdrop-filter: blur(20px) saturate(150%);
@@ -77,11 +122,45 @@
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.03);
 }
 
-/* â”€â”€â”€ Messages â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-chat-header-name {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-header-status {
+  color: #22c55e !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-header-status.offline {
+  color: #64748b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-header-btn,
+[data-mc-theme="platinum"] .mensajes-chat-header-back,
+[data-mc-theme="platinum"] .mensajes-chat-header-actions button {
+  color: #475569 !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-chat-header-btn:hover,
+[data-mc-theme="platinum"] .mensajes-chat-header-actions button:hover {
+  color: var(--mc-blue) !important;
+  background: rgba(29, 78, 216, 0.06) !important;
+}
+
+/* --- Messages --- */
 [data-mc-theme="platinum"] .mensajes-msg.sent .mensajes-msg-bubble {
   background: linear-gradient(135deg, var(--mc-blue), var(--mc-blue-light)) !important;
+  color: #ffffff !important;
   box-shadow: 0 2px 12px rgba(29, 78, 216, 0.15);
   border-radius: 18px 18px 4px 18px;
+}
+
+[data-mc-theme="platinum"] .mensajes-msg.sent .mensajes-msg-bubble .mensajes-msg-text,
+[data-mc-theme="platinum"] .mensajes-msg.sent .mensajes-msg-bubble p {
+  color: #ffffff !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-msg.sent .mensajes-msg-bubble .mensajes-msg-time {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 [data-mc-theme="platinum"] .mensajes-msg.received .mensajes-msg-bubble {
@@ -93,7 +172,17 @@
   border-radius: 18px 18px 18px 4px;
 }
 
-/* â”€â”€â”€ Input Bar â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-msg.received .mensajes-msg-bubble .mensajes-msg-text,
+[data-mc-theme="platinum"] .mensajes-msg.received .mensajes-msg-bubble p {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-msg.received .mensajes-msg-bubble .mensajes-msg-time {
+  color: #64748b !important;
+}
+
+/* --- Input Bar --- */
+[data-mc-theme="platinum"] .mensajes-input-area,
 [data-mc-theme="platinum"] .mensajes-compose {
   background: rgba(255, 255, 255, 0.65) !important;
   backdrop-filter: blur(20px);
@@ -101,13 +190,28 @@
   border-top: 1px solid rgba(255, 255, 255, 0.35);
 }
 
+[data-mc-theme="platinum"] .mensajes-input-field,
 [data-mc-theme="platinum"] .mensajes-compose-input {
   background: rgba(255, 255, 255, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.4) !important;
   border-radius: 24px !important;
+  color: #1e293b !important;
 }
 
-/* â”€â”€â”€ Action Panel â”€â”€â”€ */
+[data-mc-theme="platinum"] .mensajes-input-field::placeholder,
+[data-mc-theme="platinum"] .mensajes-compose-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-input-btn {
+  color: #475569 !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-input-btn:hover {
+  color: var(--mc-blue) !important;
+}
+
+/* --- Action Panel --- */
 [data-mc-theme="platinum"] .chat-action-buttons {
   background: rgba(255, 255, 255, 0.78) !important;
   backdrop-filter: blur(20px);
@@ -120,6 +224,7 @@
 [data-mc-theme="platinum"] .chat-action-buttons > div > button {
   background: rgba(255, 255, 255, 0.5) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  color: #475569 !important;
 }
 
 [data-mc-theme="platinum"] .chat-action-buttons > button:hover,
@@ -129,7 +234,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-/* â”€â”€â”€ Settings Menu â”€â”€â”€ */
+/* --- Settings Menu --- */
 [data-mc-theme="platinum"] .chat-action-settings-menu,
 [data-mc-theme="platinum"] .mensajes-settings-menu {
   background: rgba(255, 255, 255, 0.92) !important;
@@ -150,22 +255,23 @@
   color: #ef4444 !important;
 }
 
-/* â”€â”€â”€ Avatars â”€â”€â”€ */
+/* --- Avatars --- */
 [data-mc-theme="platinum"] .mensajes-chat-avatar-img {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   border: 2px solid rgba(255, 255, 255, 0.6);
 }
 
-/* â”€â”€â”€ Date Dividers â”€â”€â”€ */
+/* --- Date Dividers --- */
 [data-mc-theme="platinum"] .mensajes-date-divider span {
   background: rgba(255, 255, 255, 0.75) !important;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  color: #64748b !important;
 }
 
-/* â”€â”€â”€ Scrollbar â”€â”€â”€ */
+/* --- Scrollbar --- */
 [data-mc-theme="platinum"] .mensajes-chat-list::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.08);
   border-radius: 4px;
@@ -175,7 +281,21 @@
   background: transparent;
 }
 
-/* â”€â”€â”€ Unread Badge â”€â”€â”€ */
+/* --- Unread Badge --- */
 [data-mc-theme="platinum"] .mensajes-chat-unread {
   box-shadow: 0 1px 4px rgba(29, 78, 216, 0.2);
+}
+
+/* --- Empty State --- */
+[data-mc-theme="platinum"] .mensajes-empty-state,
+[data-mc-theme="platinum"] .mensajes-main-empty {
+  color: #64748b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-main-empty h2 {
+  color: #1e293b !important;
+}
+
+[data-mc-theme="platinum"] .mensajes-main-empty p {
+  color: #64748b !important;
 }
