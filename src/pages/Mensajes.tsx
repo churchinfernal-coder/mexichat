@@ -11,7 +11,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageCircle, Shield, Camera, Settings, X as XIcon, Upload, User, Users, Image as ImageIcon, LogOut, Phone, Key, Palette, Globe, Type, ArrowLeft, Trash2, Download } from 'lucide-react';
+import { MessageCircle, Shield, Camera, Settings, X as XIcon, Upload, User, Users, Image as ImageIcon, LogOut, Phone, Key, Palette, Globe, Type, ArrowLeft, Trash2, Download, AlertTriangle } from 'lucide-react';
 import { useTheme, ACCENT_COLORS, FONT_FAMILIES, type ThemeId, type FontFamily } from '@/contexts/ThemeContext';
 import { NATIONALITIES, GENDERS } from '@/config/nationalities';
 import { toast } from 'sonner';
@@ -218,7 +218,7 @@ interface SettingsPanelProps {
   chatLock: ReturnType<typeof useChatLock>;
 }
 
-const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfileUpdated, privacySettings, chatLock }) => {
+const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfileUpdated, privacySettings, chatLock, blockedIds, setBlockedIds }) => {
   const [uploading, setUploading] = useState(false);
   const [fullName, setFullName] = useState(str(profile.full_name, ''));
   const [username, setUsername] = useState(profile.username || '');

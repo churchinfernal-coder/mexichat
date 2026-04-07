@@ -40,6 +40,7 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const TermsOfService = React.lazy(() => import('./pages/TermsOfService'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 const AdminReports = React.lazy(() => import('./pages/AdminReports'));
+const Reportes = React.lazy(() => import('./pages/Reportes'));
 const Landing = React.lazy(() => import('./pages/Landing'));
 
 // ===============================================================================
@@ -123,6 +124,7 @@ const AppRoutes: React.FC = () => {
         } />
 
         {/* Everything else -> 404 */}
+        <Route path="reportes" element={<ProtectedRoute><Reportes /></ProtectedRoute>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
