@@ -223,6 +223,47 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [myUserId, showBrowserNotification]);
 
   // ----------
+  // REPORT ALERT LISTENER — realtime safety alerts from other users
+  // ----------
+  useEffect(() => {
+    if (!myUserId) return;
+    const channelName = 'report-alert:' + myUserId + ':listen';
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    try {
+      channel = supabase.channel(channelName);
+      channel
+        .on('broadcast', { event: 'report-alert' }, (msg: any) => {
+          const p = msg?.payload;
+          if (!p) return;
+          const name = p.reportedName || 'Un usuario';
+          const cat = p.category || 'conducta';
+          const total = p.totalReports || 1;
+          const toastMsg = name + ' ha sido reportado por ' + cat + '. ' + total + ' reporte(s) en total.';
+
+          toast.warning(toastMsg, { duration: 8000 });
+
+          if (!isNative && document.hidden && Notification.permission === 'granted') {
+            try {
+              new Notification('⚠️ Alerta de Seguridad — MexiChat', {
+                body: toastMsg,
+                icon: p.reportedAvatar || '/favicon.ico',
+                tag: 'report-' + p.reportedUserId,
+              });
+            } catch {}
+          }
+        })
+        .subscribe();
+    } catch (err) {
+      console.error('[NotificationProvider] Report alert channel failed:', err);
+    }
+
+    return () => {
+      try { if (channel) supabase.removeChannel(channel); } catch {}
+    };
+  }, [myUserId]);
+
+  // ----------
   // RENDER — Just children, no call UI
   // ----------
 

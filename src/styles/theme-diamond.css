@@ -359,3 +359,8 @@
 [data-mc-theme="diamond"] .mensajes-settings-menu .mensajes-settings-item.danger svg {
   color: #ef4444 !important;
 }
+
+/* --- Group modals: force readable inputs --- */
+[data-mc-theme="diamond"] {
+  --mc-input-bg: #f0f2f5;
+}

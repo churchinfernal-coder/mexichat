@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MEXICHAT â€” Enterprise Chat Window v3.0
  *
  * v3.0 (v8 system):
@@ -24,7 +24,12 @@ import {
   VideoOff, MicOff, Reply, Forward, CornerUpRight,
   Timer, CheckSquare, Edit3, Pin, Star, Search,
   Image as ImageIcon, Download, Archive, SmilePlus,
+  MapPin, Navigation,
 } from 'lucide-react';
+import LocationShareButton from '@/components/messaging/LocationShareButton';
+import LocationMessage from '@/components/messaging/LocationMessage';
+import LiveLocationMap from '@/components/messaging/LiveLocationMap';
+import LiveLocationTimerPicker from '@/components/messaging/LiveLocationTimerPicker';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useTyping } from '@/hooks/useTyping';
@@ -285,6 +290,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTimerPicker, setShowTimerPicker] = useState(false);
+  const [showLiveLocation, setShowLiveLocation] = useState(false);
+  const [showLiveTimerPicker, setShowLiveTimerPicker] = useState(false);
+  const [liveDurationMinutes, setLiveDurationMinutes] = useState(15);
 
   // v8 local state
   const [editText, setEditText] = useState('');
@@ -623,6 +631,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button onClick={() => { startCall('audio'); setShowActions(false); }} title="Llamada de voz"><Phone size={18} /></button>
                 <button onClick={() => { startCall('video'); setShowActions(false); }} title="Videollamada"><Video size={18} /></button>
                 <button onClick={() => { setShowTimerPicker(true); setShowActions(false); }} title="Mensajes temporales"><Timer size={18} /></button>
+                <LocationShareButton onSendLocation={(content, mediaType) => { onSendMessage(content, undefined, mediaType); setShowActions(false); }} onClose={() => setShowActions(false)} />
+                <button onClick={() => { setShowLiveTimerPicker(true); setShowActions(false); }} title="Ubicación en tiempo real"><Navigation size={18} /></button>
               </>
             )}
             {/* v8 action buttons */}
@@ -647,6 +657,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         )}
       </div>
+
+      {showLiveLocation && (
+        <LiveLocationMap
+          conversationId={conversationId}
+          currentUserId={currentUserId}
+          currentUserName={currentUserName}
+          otherUserName={otherUser.fullName}
+          durationMinutes={liveDurationMinutes}
+          onClose={() => setShowLiveLocation(false)}
+        />
+      )}
+
+      <LiveLocationTimerPicker
+        open={showLiveTimerPicker}
+        onSelect={(mins: number) => { setLiveDurationMinutes(mins); setShowLiveTimerPicker(false); setShowLiveLocation(true); }}
+        onClose={() => setShowLiveTimerPicker(false)}
+      />
 
       <DisappearingTimerPicker open={showTimerPicker} currentTimer={disappearing.timer} onChange={(t: DisappearTimer) => disappearing.setTimer(t)} onClose={() => setShowTimerPicker(false)} />
 
@@ -698,7 +725,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                     )}
 
-                    {msg.mediaUrl && (
+                    {msg.mediaType === 'location' && (
+                      <LocationMessage content={msg.content} isSent={isSent} />
+                    )}
+
+                    {msg.mediaUrl && msg.mediaType !== 'location' && (
                       <div className="mensajes-msg-media">
                         {msg.mediaType === 'image' ? <img src={msg.mediaUrl} alt="Media" loading="lazy" onClick={(e) => { e.stopPropagation(); setLightboxSrc(msg.mediaUrl); }} style={{ cursor: 'zoom-in' }} />
                           : msg.mediaType === 'video' ? <video src={msg.mediaUrl} controls preload="metadata" />
@@ -706,7 +737,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                     )}
 
-                    {msg.content && (
+                    {msg.content && msg.mediaType !== 'location' && (
                       msg.iv ? (
                         <DecryptedBubble msg={msg} currentUserId={currentUserId} otherUserId={otherUser.id} e2ee={e2ee} />
                       ) : (
@@ -746,7 +777,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
                     {/* Hover action buttons */}
                     {hoveredMsgId === msg.id && !bulkSelect.isSelecting && (
-                      <div style={{ position: 'absolute', top: '0', [isSent ? 'left' : 'right']: '-130px', display: 'flex', gap: '2px', background: 'var(--mc-sidebar)', borderRadius: '0', padding: '2px', border: '1px solid var(--mc-border)', zIndex: 10 }}>
+                      <div className="mc-msg-hover-actions" style={{ position: 'absolute', top: '-32px', [isSent ? 'right' : 'left']: '0', display: 'flex', gap: '2px', background: 'var(--mc-sidebar, #fff)', borderRadius: '8px', padding: '2px 4px', border: '1px solid var(--mc-border)', zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                         <button onClick={() => handleReply(msg.id)} title="Responder" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Reply size={14} /></button>
                         <button onClick={() => handleForward(msg.id)} title="Reenviar" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Forward size={14} /></button>
                         {/* v8: Reaction trigger */}

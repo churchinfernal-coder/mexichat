@@ -354,3 +354,40 @@
 [data-mc-theme="platinum"] .mensajes-settings-menu .mensajes-settings-item.danger svg {
   color: #ef4444 !important;
 }
+
+/* --- GROUP SETTINGS MODALS (inline-styled panels) --- */
+[data-mc-theme="platinum"] [style*="background: var(--mc-sidebar)"],
+[data-mc-theme="platinum"] [style*="background:var(--mc-sidebar)"] {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+[data-mc-theme="platinum"] [style*="background: var(--mc-sidebar)"] input,
+[data-mc-theme="platinum"] [style*="background: var(--mc-sidebar)"] textarea,
+[data-mc-theme="platinum"] [style*="background:var(--mc-sidebar)"] input,
+[data-mc-theme="platinum"] [style*="background:var(--mc-sidebar)"] textarea {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-mc-theme="platinum"] [style*="background: var(--mc-sidebar)"] input::placeholder,
+[data-mc-theme="platinum"] [style*="background: var(--mc-sidebar)"] textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+[data-mc-theme="platinum"] [style*="background: var(--mc-sidebar)"] label,
+[data-mc-theme="platinum"] [style*="background:var(--mc-sidebar)"] label {
+  color: #64748b !important;
+}
+
+[data-mc-theme="platinum"] [style*="background: var(--mc-sidebar)"] span,
+[data-mc-theme="platinum"] [style*="background:var(--mc-sidebar)"] span {
+  color: #1e293b !important;
+}
+
+/* --- Group modals: force readable inputs --- */
+[data-mc-theme="platinum"] {
+  --mc-input-bg: #f1f5f9;
+}

@@ -371,3 +371,8 @@
 [data-mc-theme="gold"] .mensajes-msg.received .mensajes-msg-meta .mensajes-msg-time {
   color: rgba(0, 0, 0, 0.45) !important;
 }
+
+/* --- Group modals: force readable inputs --- */
+[data-mc-theme="gold"] {
+  --mc-input-bg: #f1f5f9;
+}

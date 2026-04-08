@@ -20,6 +20,7 @@
   --mc-online: #22c55e;
   --mc-offline: #cbd5e1;
   --mc-input-bg: #f1f5f9;
+  --mc-input-bg: #f1f5f9;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -452,6 +453,19 @@
 .mensajes-msg-status.read { color: var(--mc-blue); }
 
 .mensajes-msg-media { max-width: 280px; border-radius: 12px; overflow: hidden; margin-bottom: 4px; }
+
+/* Location map containment - prevent Leaflet z-index bleed */
+.mc-location-msg .leaflet-container {
+  z-index: 0 !important;
+}
+.mc-location-msg .leaflet-pane,
+.mc-location-msg .leaflet-control-container {
+  z-index: auto !important;
+}
+.mc-location-msg .leaflet-tile-pane { z-index: 1 !important; }
+.mc-location-msg .leaflet-overlay-pane { z-index: 2 !important; }
+.mc-location-msg .leaflet-marker-pane { z-index: 3 !important; }
+.mc-location-msg .leaflet-popup-pane { z-index: 4 !important; }
 .mensajes-msg-media img,
 .mensajes-msg-media video { width: 100%; display: block; }
 
@@ -783,7 +797,7 @@
   border-radius: 10px;
   background: #f8fafc;
   border: 1px solid var(--mc-border);
-  color: var(--mc-text-muted);
+  color: var(--mc-text-muted) !important;
   cursor: pointer;
   display: flex;
   align-items: center;

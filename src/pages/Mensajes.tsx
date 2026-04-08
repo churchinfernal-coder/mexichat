@@ -231,6 +231,67 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
   const { signOut } = useAuth();
   const theme = useTheme();
 
+  // -- Blocked Users State --
+  const [blockedProfiles, setBlockedProfiles] = useState<any[]>([]);
+  const [loadingBlocked, setLoadingBlocked] = useState(false);
+  const [unblockingId, setUnblockingId] = useState<string | null>(null);
+  const [sentReports, setSentReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+
+  useEffect(() => {
+    if (activeSettingsTab !== 'privacy' || !profile.user_id) return;
+    let cancelled = false;
+    setLoadingBlocked(true);
+    (async () => {
+      try {
+        const { data: blocked } = await supabase.from('blocked_users').select('blocked_id').eq('blocker_id', profile.user_id);
+        if (cancelled) return;
+        if (!blocked || blocked.length === 0) { setBlockedProfiles([]); setLoadingBlocked(false); return; }
+        const ids = blocked.map((b: any) => b.blocked_id);
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', ids);
+        if (cancelled) return;
+        setBlockedProfiles((profs || []).map((p: any) => ({ ...p, user_id: p.id })));
+      } catch { if (!cancelled) setBlockedProfiles([]); }
+      if (!cancelled) setLoadingBlocked(false);
+    })();
+    return () => { cancelled = true; };
+  }, [activeSettingsTab, profile.user_id, blockedIds]);
+
+  useEffect(() => {
+    if (activeSettingsTab !== 'privacy' || !profile.user_id) return;
+    let cancelled = false;
+    setLoadingReports(true);
+    (async () => {
+      try {
+        const { data: reports } = await (supabase.from('reported_users' as any).select('*') as any).eq('reporter_id', profile.user_id).order('created_at', { ascending: false }).limit(50);
+        if (cancelled) return;
+        if (!reports || reports.length === 0) { setSentReports([]); setLoadingReports(false); return; }
+        const reportedIds = [...new Set((reports as any[]).map((r: any) => r.reported_id))] as string[];
+        const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', reportedIds);
+        if (cancelled) return;
+        const profMap = new Map((profs || []).map((p: any) => [p.id, p]));
+        setSentReports((reports as any[]).map((r: any) => ({
+          ...r,
+          reported_name: (profMap.get(r.reported_id) as any)?.full_name || 'Desconocido',
+          reported_avatar: (profMap.get(r.reported_id) as any)?.avatar_url,
+          reported_username: (profMap.get(r.reported_id) as any)?.username,
+        })));
+      } catch { if (!cancelled) setSentReports([]); }
+      if (!cancelled) setLoadingReports(false);
+    })();
+    return () => { cancelled = true; };
+  }, [activeSettingsTab, profile.user_id]);
+
+  const handleUnblockUser = async (targetId: string) => {
+    setUnblockingId(targetId);
+    try {
+      await supabase.from('blocked_users').delete().eq('blocker_id', profile.user_id).eq('blocked_id', targetId);
+      setBlockedIds(prev => { const next = new Set(prev); next.delete(targetId); return next; });
+      setBlockedProfiles(prev => prev.filter((p: any) => p.user_id !== targetId));
+      toast.success('Usuario desbloqueado');
+    } catch { toast.error('Error al desbloquear'); }
+    setUnblockingId(null);
+  };
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -458,6 +519,93 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                     left: privacySettings.privacy.readReceipts ? '23px' : '3px',
                   }} />
                 </button>
+              </div>
+
+              {/* ====== BLACKLIST ====== */}
+              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid ' + MC.border }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Shield size={16} style={{ color: MC.danger }} />
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: MC.text }}>Usuarios Bloqueados</span>
+                  </div>
+                  {blockedProfiles.length > 0 && (
+                    <span style={{ background: 'rgba(239,68,68,0.1)', color: MC.danger, padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      {blockedProfiles.length}
+                    </span>
+                  )}
+                </div>
+                {loadingBlocked ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: MC.textMuted, fontSize: '13px' }}>Cargando...</div>
+                ) : blockedProfiles.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', background: MC.inputBg, borderRadius: '10px', border: '1px solid ' + MC.border }}>
+                    <div style={{ fontSize: '13px', color: MC.textMuted }}>No tienes usuarios bloqueados</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {blockedProfiles.map((bp: any) => (
+                      <div key={bp.user_id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: MC.inputBg, borderRadius: '10px', border: '1px solid ' + MC.border }}>
+                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: MC.border, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {bp.avatar_url ? <img src={bp.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={18} style={{ color: MC.textMuted }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: MC.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{bp.full_name || 'Usuario'}</div>
+                          {bp.username && <div style={{ fontSize: '11px', color: MC.textMuted }}>{'@' + bp.username}</div>}
+                        </div>
+                        <button onClick={() => handleUnblockUser(bp.user_id)} disabled={unblockingId === bp.user_id}
+                          style={{ padding: '5px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: MC.danger, fontSize: '11px', fontWeight: 600, cursor: unblockingId === bp.user_id ? 'wait' : 'pointer', whiteSpace: 'nowrap' as const }}>
+                          {unblockingId === bp.user_id ? '...' : 'Desbloquear'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ====== REPORTES ENVIADOS ====== */}
+              <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid ' + MC.border }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
+                  <span style={{ fontSize: '14px', fontWeight: 700, color: MC.text }}>Reportes Enviados</span>
+                  {sentReports.length > 0 && (
+                    <span style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b', padding: '2px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 700, marginLeft: 'auto' }}>
+                      {sentReports.length}
+                    </span>
+                  )}
+                </div>
+                {loadingReports ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: MC.textMuted, fontSize: '13px' }}>Cargando...</div>
+                ) : sentReports.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', background: MC.inputBg, borderRadius: '10px', border: '1px solid ' + MC.border }}>
+                    <div style={{ fontSize: '13px', color: MC.textMuted }}>No has enviado reportes</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {sentReports.map((r: any) => {
+                      const statusMap: Record<string, { label: string; color: string; bg: string }> = { pending: { label: 'Pendiente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' }, reviewed: { label: 'Revisado', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' }, action_taken: { label: 'Accion tomada', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' }, dismissed: { label: 'Descartado', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' } };
+                      const st = statusMap[r.status || 'pending'] || statusMap.pending;
+                      const cat = (r.reason || '').replace(/^\[/, '').replace(/\].*/, '');
+                      const catLabels: Record<string, string> = { spam: 'Spam', harassment: 'Acoso', fake: 'Perfil falso', underage: 'Menor', scam: 'Estafa', csam: 'CSAM', extortion: 'Extorsion', threats: 'Amenazas', other: 'Otro' };
+                      return (
+                        <div key={r.id} style={{ padding: '10px 12px', background: MC.inputBg, borderRadius: '10px', border: '1px solid ' + MC.border }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: MC.border, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {r.reported_avatar ? <img src={r.reported_avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={14} style={{ color: MC.textMuted }} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: MC.text }}>{r.reported_name}</span>
+                              {r.reported_username && <span style={{ fontSize: '11px', color: MC.textMuted, marginLeft: '6px' }}>{'@' + r.reported_username}</span>}
+                            </div>
+                            <span style={{ background: st.bg, color: st.color, padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap' as const }}>{st.label}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: MC.textMuted }}>
+                            <span style={{ background: 'rgba(239,68,68,0.08)', color: MC.danger, padding: '1px 8px', borderRadius: '6px', fontWeight: 600 }}>{catLabels[cat] || cat || 'Reporte'}</span>
+                            <span>{r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -984,8 +1132,8 @@ const Mensajes: React.FC = () => {
     chatDrafts.clearDraft(convId);
     const tempId = `temp-${Date.now()}`;
     deliveryStatus.markSending(tempId);
-    let finalContent = content || ''; let iv: string | null = null;
-    if (finalContent && activeOtherUserId && e2ee.isReady) {
+    let finalContent = content || ''; let iv: string | null = null; const isLocation = mediaType === 'location';
+    if (finalContent && activeOtherUserId && e2ee.isReady && !isLocation) {
       const encrypted = await e2ee.encrypt(finalContent, activeOtherUserId);
       if (encrypted) { finalContent = encrypted.ciphertext; iv = encrypted.iv; }
     }
@@ -1003,7 +1151,7 @@ const Mensajes: React.FC = () => {
       // Auto-responder: check if this is an admin conversation with a menu selection
       processAutoResponse(convId, myUserId, content).catch(() => {});
     await supabase.from('conversations').update({
-      last_message: content || '\uD83D\uDCCE Archivo',
+      last_message: isLocation ? '\uD83D\uDCCD Ubicacion' : (content || '\uD83D\uDCCE Archivo'),
       last_message_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }).eq('id', convId);
     const notifyChannel = supabase.channel(`msg-notify-send:${receiverId}:${Date.now()}`);
@@ -1030,12 +1178,14 @@ const Mensajes: React.FC = () => {
     const gId = activeGroupId;
     chatDrafts.clearDraft(gId);
     const mentionedUsernames = mentions.extractMentions(content);
+    const isGroupLocation = mediaType === 'location';
     const insertObj: Record<string, unknown> = { group_id: gId, sender_id: myUserId, content: content || '' };
     if (mediaUrl) { insertObj.media_url = mediaUrl; insertObj.media_type = mediaType ?? null; }
-    const { error } = await supabase.from('group_messages').insert(insertObj as any);
+    if (mediaUrl) { insertObj.media_url = mediaUrl; insertObj.media_type = mediaType ?? null; }
+    if (isGroupLocation) { insertObj.media_type = 'location'; }
     if (error) { toast.error('Error al enviar'); return; }
     await supabase.from('groups').update({
-      last_message: content || '\uD83D\uDCCE Archivo',
+      last_message: isGroupLocation ? '\uD83D\uDCCD Ubicacion' : (content || '\uD83D\uDCCE Archivo'),
       last_message_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }).eq('id', gId);
     const { data: membersData } = await supabase.from('group_members')
@@ -1129,11 +1279,52 @@ const Mensajes: React.FC = () => {
   const handleReport = useCallback(async (category: string, reason: string) => {
     if (!myUserId || !activeOtherUserId) return;
     const targetId = activeOtherUserId;
-    await supabase.from('reported_users').insert({ reporter_id: myUserId, reported_id: targetId, reason: `[${category}] ${reason}`.trim() });
-    await supabase.from('blocked_users').insert({ blocker_id: myUserId, blocked_id: targetId });
+
+    await (supabase.from('reported_users' as any).insert as any)({ reporter_id: myUserId, reported_id: targetId, reason: '[' + category + '] ' + (reason || '').trim(), status: 'pending' });
+    await supabase.from('blocked_users').insert({ blocker_id: myUserId, blocked_id: targetId }).catch(() => {});
     setBlockedIds(prev => new Set(prev).add(targetId));
-    setReportDialog({ open: false, userName: '' }); toast.success('Reportado y bloqueado'); trackEvent('user_reported', { category });
-  }, [myUserId, activeOtherUserId, trackEvent]);
+
+    const { data: reportedProfile } = await supabase.from('profiles').select('full_name, username, avatar_url').eq('id', targetId).single();
+    const reportedName = (reportedProfile as any)?.full_name || (reportedProfile as any)?.username || 'Usuario';
+
+    const contactIds = new Set<string>();
+    const { data: convs1 } = await supabase.from('conversations').select('user_1, user_2').eq('user_1', targetId);
+    const { data: convs2 } = await supabase.from('conversations').select('user_1, user_2').eq('user_2', targetId);
+    (convs1 || []).forEach((c: any) => { if (c.user_2 !== myUserId) contactIds.add(c.user_2); });
+    (convs2 || []).forEach((c: any) => { if (c.user_1 !== myUserId) contactIds.add(c.user_1); });
+
+    const { data: targetGroups } = await supabase.from('group_members').select('group_id').eq('user_id', targetId);
+    if (targetGroups && targetGroups.length > 0) {
+      const gIds = targetGroups.map((g: any) => g.group_id);
+      const { data: sharedMembers } = await supabase.from('group_members').select('user_id').in('group_id', gIds);
+      (sharedMembers || []).forEach((mm: any) => { if (mm.user_id !== myUserId && mm.user_id !== targetId) contactIds.add(mm.user_id); });
+    }
+
+    const { data: allReports } = await (supabase.from('reported_users' as any).select('id') as any).eq('reported_id', targetId);
+    const totalReports = (allReports || []).length;
+
+    const alertPayload = { type: 'user_reported', reportedUserId: targetId, reportedName, reportedAvatar: (reportedProfile as any)?.avatar_url || null, reportedUsername: (reportedProfile as any)?.username || null, category, totalReports, reportedAt: new Date().toISOString() };
+
+    for (const cid of contactIds) {
+      const ch = supabase.channel('report-alert:' + cid + ':' + Date.now());
+      ch.subscribe((st: string) => {
+        if (st === 'SUBSCRIBED') {
+          ch.send({ type: 'broadcast', event: 'report-alert', payload: { ...alertPayload, to: cid } });
+          setTimeout(() => supabase.removeChannel(ch), 3000);
+        }
+      });
+      sendPushNotification({ targetUserId: cid, type: 'message', title: 'Alerta de seguridad', body: reportedName + ' ha sido reportado por ' + category + '. ' + totalReports + ' reporte(s).', fromUserId: myUserId, avatarUrl: (reportedProfile as any)?.avatar_url || null }).catch(() => {});
+    }
+
+    if (totalReports >= 3) {
+      await supabase.from('profiles').update({ is_banned: true } as any).eq('id', targetId).catch(() => {});
+      await supabase.from('group_members').delete().eq('user_id', targetId).catch(() => {});
+    }
+
+    setReportDialog({ open: false, userName: '' });
+    toast.success('Reportado y bloqueado. ' + contactIds.size + ' contactos alertados.');
+    trackEvent('user_reported', { category, contacts_alerted: contactIds.size, total_reports: totalReports });
+  }, [myUserId, activeOtherUserId, trackEvent, myProfile]);
 
   const handleMute = useCallback(async () => {
     if (!activeConvId) return;
@@ -1225,6 +1416,7 @@ const Mensajes: React.FC = () => {
 
   const handleForwardToDm = useCallback(async (targetConvId: string) => {
     if (!myUserId || !forwardingMessage) return;
+    const fwdIsLocation = forwardingMessage.mediaType === 'location';
     const { error } = await supabase.from('private_messages').insert({
       conversation_id: targetConvId, sender_id: myUserId, content: forwardingMessage.content || '',
       media_url: forwardingMessage.mediaUrl ?? null, media_type: forwardingMessage.mediaType ?? null,
@@ -1232,19 +1424,21 @@ const Mensajes: React.FC = () => {
     });
     if (error) { toast.error('Error al reenviar'); return; }
     await supabase.from('conversations').update({
-      last_message: '\u21AA ' + (forwardingMessage.content || '\uD83D\uDCCE Archivo'), last_message_at: new Date().toISOString(),
+      last_message: fwdIsLocation ? '\u21AA \uD83D\uDCCD Ubicacion' : '\u21AA ' + (forwardingMessage.content || '\uD83D\uDCCE Archivo'), last_message_at: new Date().toISOString(),
     }).eq('id', targetConvId);
     setForwardingMessage(null); toast.success('Mensaje reenviado');
   }, [myUserId, forwardingMessage]);
 
   const handleForwardToGroup = useCallback(async (targetGroupId: string) => {
     if (!myUserId || !forwardingMessage) return;
+    const fwdIsLocation = forwardingMessage.mediaType === 'location';
     const fwdObj: Record<string, unknown> = { group_id: targetGroupId, sender_id: myUserId, content: forwardingMessage.content || '' };
     if (forwardingMessage.mediaUrl) { fwdObj.media_url = forwardingMessage.mediaUrl; fwdObj.media_type = forwardingMessage.mediaType ?? null; }
+    if (fwdIsLocation) { fwdObj.media_type = 'location'; }
     const { error } = await supabase.from('group_messages').insert(fwdObj as any);
     if (error) { toast.error('Error al reenviar'); return; }
     await supabase.from('groups').update({
-      last_message: '\u21AA ' + (forwardingMessage.content || '\uD83D\uDCCE Archivo'), last_message_at: new Date().toISOString(),
+      last_message: fwdIsLocation ? '\u21AA \uD83D\uDCCD Ubicacion' : '\u21AA ' + (forwardingMessage.content || '\uD83D\uDCCE Archivo'), last_message_at: new Date().toISOString(),
     }).eq('id', targetGroupId);
     setForwardingMessage(null); toast.success('Reenviado al grupo');
   }, [myUserId, forwardingMessage]);
@@ -1354,6 +1548,8 @@ const Mensajes: React.FC = () => {
           onProfileUpdated={(updated) => setMyProfile(updated)}
           privacySettings={privacySettings}
           chatLock={chatLock}
+          blockedIds={blockedIds}
+          setBlockedIds={setBlockedIds}
         />
       )}
 
