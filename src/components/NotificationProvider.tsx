@@ -243,7 +243,7 @@ const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           toast.warning(toastMsg, { duration: 8000 });
 
-          if (!isNative && document.hidden && Notification.permission === 'granted') {
+          if (!_isNative && document.hidden && Notification.permission === 'granted') {
             try {
               new Notification('⚠️ Alerta de Seguridad — MexiChat', {
                 body: toastMsg,

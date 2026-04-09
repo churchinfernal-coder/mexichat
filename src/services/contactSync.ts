@@ -44,11 +44,11 @@ export async function getDeviceContacts(): Promise<DeviceContact[]> {
     const result = await Contacts.getContacts({
       projection: { name: true, phones: true, emails: true },
     });
-    return (result.contacts || []).map(c => ({
+    return (result.contacts || []).map((c: any) => ({
       name: c.name?.display || '',
-      phones: (c.phones || []).map(p => p.number || '').filter(Boolean),
-      emails: (c.emails || []).map(e => e.address || '').filter(Boolean),
-    })).filter(c => c.phones.length > 0 || c.emails.length > 0);
+      phones: (c.phones || []).map((p: any) => p.number || '').filter(Boolean),
+      emails: (c.emails || []).map((e: any) => e.address || '').filter(Boolean),
+    })).filter((c: any) => c.phones.length > 0 || c.emails.length > 0);
   } catch (err) {
     console.warn('[ContactSync] Failed to read contacts:', err);
     return [];
