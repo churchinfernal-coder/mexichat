@@ -1,4 +1,4 @@
-﻿import { getCorsHeaders } from './cors.ts';
+import { getCorsHeaders } from './cors.ts';
 
 const SECURITY_HEADERS: Record<string, string> = {
   'Content-Type': 'application/json; charset=utf-8',

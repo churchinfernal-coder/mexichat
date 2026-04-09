@@ -1,7 +1,7 @@
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   GOLD UI THEME â€” Azul Minimal
+/* ═════════════════════════════════════════��═════════════════════════════════
+   GOLD UI THEME — Azul Minimal
    Blue accent header, clean minimal design, blue gradient chat area.
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 [data-mc-theme="gold"] {
   --gold-blue: #5288c1;
@@ -19,12 +19,12 @@
   --gold-link: #3390ec;
 }
 
-/* â”€â”€â”€ Container â”€â”€â”€ */
+/* ——— Container ——— */
 [data-mc-theme="gold"] .mensajes-container {
   background: var(--gold-panel);
 }
 
-/* â”€â”€â”€ Sidebar â”€â”€â”€ */
+/* ——— Sidebar ——— */
 [data-mc-theme="gold"] .mensajes-sidebar {
   background: var(--gold-sidebar);
   border-right: none;
@@ -45,7 +45,7 @@
   color: #ffffff !important;
 }
 
-/* â”€â”€â”€ Tabs â”€â”€â”€ */
+/* ——— Tabs ——— */
 [data-mc-theme="gold"] .mensajes-tabs {
   background: var(--gold-header);
   border-bottom: none;
@@ -61,7 +61,7 @@
   border-bottom: 2px solid #ffffff;
 }
 
-/* â”€â”€â”€ Search â”€â”€â”€ */
+/* ——— Search ——— */
 [data-mc-theme="gold"] .mensajes-search-wrapper {
   background: var(--gold-panel) !important;
   border: none !important;
@@ -73,7 +73,7 @@
   color: var(--gold-text-primary);
 }
 
-/* â”€â”€â”€ Chat Items â”€â”€â”€ */
+/* ——— Chat Items ——— */
 [data-mc-theme="gold"] .mensajes-chat-item {
   border-radius: 0;
   border-bottom: none;
@@ -111,7 +111,7 @@
   font-size: 12px;
 }
 
-/* â”€â”€â”€ Chat Header â”€â”€â”€ */
+/* ——— Chat Header ——— */
 [data-mc-theme="gold"] .mensajes-chat-header {
   background: var(--gold-header) !important;
   color: #ffffff;
@@ -135,12 +135,12 @@
   color: #ffffff !important;
 }
 
-/* â”€â”€â”€ Main Chat Area â”€â”€â”€ */
+/* ——— Main Chat Area ——— */
 [data-mc-theme="gold"] .mensajes-main {
   background: linear-gradient(180deg, #a8c8dc 0%, #7facc6 40%, #6d9ebf 100%);
 }
 
-/* â”€â”€â”€ Message Bubbles â”€â”€â”€ */
+/* ——— Message Bubbles ——— */
 [data-mc-theme="gold"] .mensajes-msg.sent .mensajes-msg-bubble {
   background: var(--gold-bubble-sent) !important;
   color: var(--gold-text-primary) !important;
@@ -167,12 +167,12 @@
   color: rgba(0, 0, 0, 0.45) !important;
 }
 
-/* â”€â”€â”€ Ticks â”€â”€â”€ */
+/* ——— Ticks ——— */
 [data-mc-theme="gold"] .mensajes-msg-tick.read {
   color: #4fae4e !important;
 }
 
-/* â”€â”€â”€ Input Bar â”€â”€â”€ */
+/* ——— Input Bar ——— */
 [data-mc-theme="gold"] .mensajes-compose {
   background: #ffffff !important;
   border-top: none;
@@ -202,19 +202,45 @@
   background: #2b7fd4 !important;
 }
 
-/* â”€â”€â”€ Action Panel â”€â”€â”€ */
+/* ——— Action Panel ——— */
+[data-mc-theme="gold"] .chat-action-panel {
+  z-index: 100;
+}
+
 [data-mc-theme="gold"] .chat-action-buttons {
   background: #ffffff !important;
-  border-left: 1px solid #e6e6e6;
+  border: 1px solid #e6e6e6;
+  border-left: none;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
+}
+
+[data-mc-theme="gold"] .chat-action-buttons > button,
+[data-mc-theme="gold"] .chat-action-buttons > div > button {
+  background: #f8fafc !important;
+  border: 1px solid #e6e6e6 !important;
+  color: #475569 !important;
+}
+
+[data-mc-theme="gold"] .chat-action-buttons > button svg,
+[data-mc-theme="gold"] .chat-action-buttons > div > button svg {
+  color: #475569 !important;
+  stroke: #475569 !important;
 }
 
 [data-mc-theme="gold"] .chat-action-buttons > button:hover,
 [data-mc-theme="gold"] .chat-action-buttons > div > button:hover {
-  background: #f4f4f5 !important;
+  background: #f0f4f8 !important;
+  border-color: var(--gold-link) !important;
   color: var(--gold-link) !important;
 }
 
-/* â”€â”€â”€ Date Dividers â”€â”€â”€ */
+[data-mc-theme="gold"] .chat-action-buttons > button:hover svg,
+[data-mc-theme="gold"] .chat-action-buttons > div > button:hover svg {
+  color: var(--gold-link) !important;
+  stroke: var(--gold-link) !important;
+}
+
+/* ——— Date Dividers ——— */
 [data-mc-theme="gold"] .mensajes-date-divider span {
   background: rgba(0, 0, 0, 0.18) !important;
   color: #ffffff !important;
@@ -226,19 +252,19 @@
   border: none;
 }
 
-/* â”€â”€â”€ Unread Badge â”€â”€â”€ */
+/* ——— Unread Badge ——— */
 [data-mc-theme="gold"] .mensajes-chat-unread {
   background: var(--gold-link) !important;
   box-shadow: none;
 }
 
-/* â”€â”€â”€ Avatars â”€â”€â”€ */
+/* ——— Avatars ——— */
 [data-mc-theme="gold"] .mensajes-chat-avatar-img {
   border: none;
   box-shadow: none;
 }
 
-/* â”€â”€â”€ Scrollbar â”€â”€â”€ */
+/* ——— Scrollbar ——— */
 [data-mc-theme="gold"] .mensajes-chat-list::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 6px;
@@ -248,26 +274,39 @@
   background: transparent;
 }
 
-/* â”€â”€â”€ Settings / Menu Panels â”€â”€â”€ */
+/* ——— Settings / Menu Panels ——— */
 [data-mc-theme="gold"] .chat-action-settings-menu,
 [data-mc-theme="gold"] .mensajes-settings-menu {
   background: #ffffff !important;
   border: 1px solid #e6e6e6;
 }
+
 [data-mc-theme="gold"] .chat-action-settings-menu button,
 [data-mc-theme="gold"] .mensajes-settings-item {
   color: #1a1a2e !important;
 }
+
+[data-mc-theme="gold"] .chat-action-settings-menu button svg,
+[data-mc-theme="gold"] .mensajes-settings-item svg {
+  color: #1a1a2e !important;
+}
+
 [data-mc-theme="gold"] .chat-action-settings-menu button:hover,
 [data-mc-theme="gold"] .mensajes-settings-item:hover {
   background: #f0f4f8 !important;
 }
+
 [data-mc-theme="gold"] .chat-action-settings-menu button.danger,
 [data-mc-theme="gold"] .mensajes-settings-item.danger {
   color: #ef4444 !important;
 }
 
-/* --- TEXT COLOR FIXES (prevent white-on-white) --- */
+[data-mc-theme="gold"] .chat-action-settings-menu button.danger svg,
+[data-mc-theme="gold"] .mensajes-settings-item.danger svg {
+  color: #ef4444 !important;
+}
+
+/* ——— TEXT COLOR FIXES (prevent white-on-white) ——— */
 [data-mc-theme="gold"] .mensajes-sidebar-header,
 [data-mc-theme="gold"] .mensajes-sidebar-header * {
   color: #ffffff !important;
@@ -335,12 +374,12 @@
   color: #ffffff !important;
 }
 
-/* --- Group modals: force readable inputs --- */
+/* ——— Group modals: force readable inputs ——— */
 [data-mc-theme="gold"] {
   --mc-input-bg: #f1f5f9;
 }
 
-/* --- FIX: Settings dropdown inside header inherits white text --- */
+/* ——— FIX: Settings dropdown inside header inherits white text ——— */
 [data-mc-theme="gold"] .mensajes-settings-menu .mensajes-settings-item {
   color: #1a1a2e !important;
 }
@@ -359,7 +398,7 @@
   color: #ef4444 !important;
 }
 
-/* --- FIX: Message timestamps on blue gradient background --- */
+/* ——— FIX: Message timestamps on blue gradient background ——— */
 [data-mc-theme="gold"] .mensajes-msg-meta .mensajes-msg-time {
   color: rgba(0, 0, 0, 0.5) !important;
 }
@@ -372,7 +411,13 @@
   color: rgba(0, 0, 0, 0.45) !important;
 }
 
-/* --- Group modals: force readable inputs --- */
-[data-mc-theme="gold"] {
-  --mc-input-bg: #f1f5f9;
+/* ——— FIX: LocationShareButton inherits wrong colors ——— */
+[data-mc-theme="gold"] .chat-action-buttons .location-share-btn,
+[data-mc-theme="gold"] .chat-action-buttons .location-share-btn svg {
+  color: #475569 !important;
+}
+
+[data-mc-theme="gold"] .chat-action-buttons .location-share-btn:hover,
+[data-mc-theme="gold"] .chat-action-buttons .location-share-btn:hover svg {
+  color: var(--gold-link) !important;
 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MEXICHAT — Capacitor Native Push Notifications (Hardened v4)
  *
  * GUARANTEES:

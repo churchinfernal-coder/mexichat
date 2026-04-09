@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /mensajes
+Disallow: /pagos
+Disallow: /comunidad
+Disallow: /auth
+Disallow: /settings
+
+Sitemap: https://mexichat.app/sitemap.xml

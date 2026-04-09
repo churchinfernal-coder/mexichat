@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { X, Navigation, Users } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '@/integrations/supabase/client';

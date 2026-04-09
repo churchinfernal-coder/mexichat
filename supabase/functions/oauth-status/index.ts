@@ -1,4 +1,4 @@
-﻿import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { handleCors } from '../_shared/cors.ts';
 import { ok, err } from '../_shared/response.ts';
 import { authenticate, adminClient, AuthError } from '../_shared/auth.ts';

@@ -1,5 +1,17 @@
+/**
+ * MEXICHAT - Enhanced Typing Indicator v2.0
+ * Supports activity types: typing, recording, location, uploading
+ */
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+
+export type ActivityType = 'typing' | 'recording' | 'location' | 'uploading';
+
+interface ActivityPayload {
+  userId: string;
+  activity: ActivityType;
+}
 
 interface UseTypingOptions {
   conversationId: string;
@@ -9,18 +21,20 @@ interface UseTypingOptions {
 
 export function useTyping({ conversationId, currentUserId, otherUserId }: UseTypingOptions) {
   const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [otherActivity, setOtherActivity] = useState<ActivityType>('typing');
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTypingSent = useRef(0);
 
   useEffect(() => {
-    const channel = supabase.channel(`typing:${conversationId}`);
+    const channel = supabase.channel('typing:' + conversationId);
     channelRef.current = channel;
 
     channel
-      .on('broadcast', { event: 'typing' }, ({ payload }: { payload: Record<string, unknown> }) => {
+      .on('broadcast', { event: 'typing' }, ({ payload }: { payload: ActivityPayload }) => {
         if (payload.userId === otherUserId) {
           setIsOtherTyping(true);
+          setOtherActivity(payload.activity || 'typing');
           if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
           typingTimeoutRef.current = setTimeout(() => setIsOtherTyping(false), 3000);
         }
@@ -28,7 +42,10 @@ export function useTyping({ conversationId, currentUserId, otherUserId }: UseTyp
       .on('broadcast', { event: 'stop-typing' }, ({ payload }: { payload: Record<string, unknown> }) => {
         if (payload.userId === otherUserId) {
           setIsOtherTyping(false);
-          if (typingTimeoutRef.current) { clearTimeout(typingTimeoutRef.current); typingTimeoutRef.current = null; }
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = null;
+          }
         }
       })
       .subscribe();
@@ -39,16 +56,21 @@ export function useTyping({ conversationId, currentUserId, otherUserId }: UseTyp
     };
   }, [conversationId, otherUserId]);
 
-  const sendTyping = useCallback(() => {
+  const sendActivity = useCallback((activity: ActivityType = 'typing') => {
     const now = Date.now();
     if (now - lastTypingSent.current < 2000) return;
     lastTypingSent.current = now;
     channelRef.current?.send({
       type: 'broadcast',
       event: 'typing',
-      payload: { userId: currentUserId },
+      payload: { userId: currentUserId, activity } as ActivityPayload,
     });
   }, [currentUserId]);
+
+  const sendTyping = useCallback(() => sendActivity('typing'), [sendActivity]);
+  const sendRecording = useCallback(() => sendActivity('recording'), [sendActivity]);
+  const sendLocation = useCallback(() => sendActivity('location'), [sendActivity]);
+  const sendUploading = useCallback(() => sendActivity('uploading'), [sendActivity]);
 
   const sendStopTyping = useCallback(() => {
     channelRef.current?.send({
@@ -58,5 +80,13 @@ export function useTyping({ conversationId, currentUserId, otherUserId }: UseTyp
     });
   }, [currentUserId]);
 
-  return { isOtherTyping, sendTyping, sendStopTyping };
+  return {
+    isOtherTyping,
+    otherActivity,
+    sendTyping,
+    sendRecording,
+    sendLocation,
+    sendUploading,
+    sendStopTyping,
+  };
 }

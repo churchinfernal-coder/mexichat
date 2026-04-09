@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="es" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <title>MexiChat - Mensajeria Segura con Pagos, Biometria y Comunidad</title>
+    <meta name="title" content="MexiChat - Mensajeria Segura con Pagos Mercado Pago/OXXO, Biometria y Comunidad" />
+    <meta name="description" content="Mensajeria privada con cifrado E2E, llamadas HD, pagos con Mercado Pago y OXXO, autenticacion biometrica (Face ID, huella digital), grupos y comunidad MexiVanza. Gratis para Android, iOS y Web." />
+    <meta name="keywords" content="mexichat, mensajeria segura, chat privado, llamadas de voz, video llamadas, cifrado extremo a extremo, pagos mercado pago, pagos oxxo, autenticacion biometrica, face id, huella digital, chat mexico, mexivanza, comunidad mexicana, app mexicana, alternativa whatsapp, pagos moviles, chat encriptado" />
+    <meta name="author" content="MexiChat" />
+    <meta name="robots" content="index, follow" />
+    <meta name="rating" content="general" />
+    <meta name="distribution" content="global" />
+    <meta name="language" content="Spanish" />
+    <meta name="geo.region" content="MX" />
+    <meta name="geo.placename" content="Mexico" />
+
+    <link rel="canonical" href="https://mexichat.app" />
+
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon-96x96.png" type="image/png" sizes="96x96" />
+    <meta name="msapplication-TileColor" content="#1d4ed8" />
+    <meta name="msapplication-TileImage" content="/web-app-manifest-192x192.png" />
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#10b981" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#10b981" media="(prefers-color-scheme: light)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MexiChat" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="MexiChat" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mexichat.app" />
+    <meta property="og:title" content="MexiChat - Mensajeria Privada con Pagos, Biometria y Comunidad" />
+    <meta property="og:description" content="Chat cifrado E2E, llamadas HD, pagos Mercado Pago/OXXO, Face ID/huella digital, comunidad MexiVanza. Gratis para Android, iOS y Web." />
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:site_name" content="MexiChat" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="MexiChat - Mensajeria Segura con Pagos y Biometria" />
+    <meta name="twitter:description" content="Chat cifrado E2E, pagos Mercado Pago/OXXO, Face ID, llamadas HD, comunidad MexiVanza. Gratis." />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "MexiChat",
+      "url": "https://mexichat.app",
+      "applicationCategory": "CommunicationApplication",
+      "operatingSystem": "Android, iOS, Windows, macOS",
+      "browserRequirements": "Requires JavaScript. Requires HTML5.",
+      "softwareVersion": "1.0",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "MXN"
+      },
+      "featureList": [
+        "End-to-end encrypted messaging",
+        "Voice and video calls",
+        "Group chats",
+        "Push notifications",
+        "Offline support",
+        "Installable on mobile devices"
+      ]
+    }
+    </script>
+
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://http2.mlstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://*.openstreetmap.org https://raw.githubusercontent.com https://unpkg.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com https://sdk.mercadopago.com https://*.tile.openstreetmap.org https://*.openstreetmap.org; media-src 'self' data: blob: https://*.supabase.co; worker-src 'self' blob:; frame-src 'self' https://*.mercadopago.com https://*.mercadolibre.com;" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(self), microphone=(self), geolocation=(self), notifications=(self), push=(self)" />
+
+    <link rel="dns-prefetch" href="//cchakgecusfybcokbmau.supabase.co" />
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="preconnect" href="https://cchakgecusfybcokbmau.supabase.co" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+    <style>
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #f0f4f8;
+      }
+      #root:empty::after {
+        content: '';
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(29,78,216,0.15);
+        border-top-color: #1d4ed8;
+        border-radius: 50%;
+        animation: mc-spin 0.8s linear infinite;
+      }
+      @keyframes mc-spin {
+        to { transform: rotate(360deg); }
+      }
+      html { scroll-behavior: smooth; overscroll-behavior-y: contain; }
+      body {
+        margin: 0;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+        background: #f0f4f8;
+        color: #0f172a;
+        overflow-x: hidden;
+      }
+      @media all and (display-mode: standalone) {
+        body {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+               user-select: none;
+          -webkit-touch-callout: none;
+          overscroll-behavior-y: contain;
+        }
+      }
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+    </style>
+
+    <noscript>
+      <style>
+        #root:empty::after { display: none; }
+        .noscript-msg {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          background: #f0f4f8;
+          color: #0f172a;
+          font-family: sans-serif;
+          text-align: center;
+          padding: 2rem;
+        }
+        .noscript-msg h1 { font-size: 1.5rem; margin-bottom: 1rem; color: #1d4ed8; }
+        .noscript-msg p { color: #64748b; font-size: 0.875rem; }
+      </style>
+    </noscript>
+    <script type="module" crossorigin src="/assets/index-tYY8eg2N.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-ui-CEnTFmyd.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-utils-D84Wd4TD.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-react-BQnJGy3K.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-supabase-jY4wIOEF.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-ByZ-oz6p.css">
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <noscript>
+      <div class="noscript-msg">
+        <div>
+          <h1>MexiChat</h1>
+          <p>Este sitio requiere JavaScript habilitado para funcionar. Por favor, activa JavaScript en tu navegador e intenta de nuevo.</p>
+          <p style="margin-top:1rem;color:#1d4ed8;">mexichat.app</p>
+        </div>
+      </div>
+    </noscript>
+
+  </body>
+</html>

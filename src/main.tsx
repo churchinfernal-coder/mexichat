@@ -4,6 +4,7 @@ import "./index.css";
 import "./styles/theme-platinum.css";
 import "./styles/theme-diamond.css";
 import "./styles/theme-gold.css";
+import "./styles/theme-obsidian.css";
 
 window.onerror = (msg, src, line, col, err) => {
   const el = document.getElementById("root");

@@ -1,0 +1,425 @@
+/* ═══════════════════════════════════════════════════════════
+   OBSIDIAN UI THEME — Black Glass
+   Dark glassmorphism, translucent panels, neon accent glow.
+   ═══════════════════════════════════════════════════════════ */
+
+[data-mc-theme="obsidian"] {
+  --obsidian-bg: #0a0a0f;
+  --obsidian-surface: rgba(255, 255, 255, 0.04);
+  --obsidian-surface-hover: rgba(255, 255, 255, 0.07);
+  --obsidian-surface-active: rgba(255, 255, 255, 0.10);
+  --obsidian-glass: rgba(15, 15, 25, 0.75);
+  --obsidian-glass-border: rgba(255, 255, 255, 0.08);
+  --obsidian-text: #e2e8f0;
+  --obsidian-text-muted: #64748b;
+  --obsidian-text-dim: #475569;
+  --obsidian-border: rgba(255, 255, 255, 0.06);
+  --obsidian-bubble-sent: rgba(255, 255, 255, 0.08);
+  --obsidian-bubble-received: rgba(255, 255, 255, 0.04);
+  --obsidian-input-bg: rgba(255, 255, 255, 0.05);
+
+  /* Structural overrides — do NOT override --mc-blue (accent picker) */
+  --mc-sidebar: #0d0d14;
+  --mc-sidebar-hover: rgba(255, 255, 255, 0.04);
+  --mc-sidebar-active: rgba(255, 255, 255, 0.08);
+  --mc-chat-bg: #0a0a0f;
+  --mc-msg-sent: rgba(255, 255, 255, 0.08);
+  --mc-msg-received: rgba(255, 255, 255, 0.04);
+  --mc-border: rgba(255, 255, 255, 0.06);
+  --mc-text: #e2e8f0;
+  --mc-text-muted: #64748b;
+  --mc-online: #22c55e;
+  --mc-offline: #334155;
+  --mc-input-bg: rgba(255, 255, 255, 0.05);
+}
+
+/* --- Container --- */
+[data-mc-theme="obsidian"] .mensajes-container {
+  background: var(--obsidian-bg);
+}
+
+/* --- Sidebar --- */
+[data-mc-theme="obsidian"] .mensajes-sidebar {
+  background: rgba(13, 13, 20, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-right: 1px solid var(--obsidian-glass-border);
+}
+
+[data-mc-theme="obsidian"] .mensajes-sidebar-header {
+  background: rgba(15, 15, 25, 0.9) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--obsidian-glass-border);
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-sidebar-header *,
+[data-mc-theme="obsidian"] .mensajes-sidebar-header svg,
+[data-mc-theme="obsidian"] .mensajes-sidebar-header button {
+  color: var(--obsidian-text) !important;
+}
+
+/* --- Tabs --- */
+[data-mc-theme="obsidian"] .mensajes-tabs {
+  background: rgba(15, 15, 25, 0.7);
+  border-bottom: 1px solid var(--obsidian-glass-border);
+}
+
+[data-mc-theme="obsidian"] .mensajes-tab {
+  color: var(--obsidian-text-muted);
+}
+
+[data-mc-theme="obsidian"] .mensajes-tab.active {
+  color: var(--mc-blue, #3b82f6) !important;
+  border-bottom: 2px solid var(--mc-blue, #3b82f6);
+  background: transparent;
+}
+
+/* --- Search --- */
+[data-mc-theme="obsidian"] .mensajes-search-wrapper {
+  background: var(--obsidian-input-bg) !important;
+  border: 1px solid var(--obsidian-glass-border) !important;
+  border-radius: 12px;
+}
+
+[data-mc-theme="obsidian"] .mensajes-search-wrapper input {
+  color: var(--obsidian-text);
+}
+
+[data-mc-theme="obsidian"] .mensajes-search-wrapper input::placeholder {
+  color: var(--obsidian-text-dim);
+}
+
+/* --- Chat Items --- */
+[data-mc-theme="obsidian"] .mensajes-chat-item {
+  border-bottom: 1px solid var(--obsidian-border);
+  border-radius: 0;
+  margin: 0;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-item:hover {
+  background: var(--obsidian-surface-hover) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-item.active {
+  background: var(--obsidian-surface-active) !important;
+  border-left: 2px solid var(--mc-blue, #3b82f6);
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-item-name,
+[data-mc-theme="obsidian"] .mensajes-chat-name {
+  color: var(--obsidian-text) !important;
+  font-weight: 500;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-item-message,
+[data-mc-theme="obsidian"] .mensajes-chat-preview {
+  color: var(--obsidian-text-muted) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-item-time,
+[data-mc-theme="obsidian"] .mensajes-chat-time {
+  color: var(--obsidian-text-dim) !important;
+}
+
+/* --- Chat Header --- */
+[data-mc-theme="obsidian"] .mensajes-chat-header {
+  background: rgba(15, 15, 25, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--obsidian-glass-border);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-header-name {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-header-status {
+  color: var(--obsidian-text-muted) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-header svg,
+[data-mc-theme="obsidian"] .mensajes-chat-header button {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-header button:hover {
+  background: var(--obsidian-surface-hover) !important;
+}
+
+/* --- Main Chat Area --- */
+[data-mc-theme="obsidian"] .mensajes-main {
+  background: var(--obsidian-bg);
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+}
+
+/* --- Message Bubbles --- */
+[data-mc-theme="obsidian"] .mensajes-msg.sent .mensajes-msg-bubble {
+  background: var(--obsidian-bubble-sent) !important;
+  color: var(--obsidian-text) !important;
+  border: 1px solid var(--obsidian-glass-border);
+  border-radius: 16px 16px 2px 16px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[data-mc-theme="obsidian"] .mensajes-msg.sent .mensajes-msg-bubble .mensajes-msg-text {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-msg.sent .mensajes-msg-bubble .mensajes-msg-time,
+[data-mc-theme="obsidian"] .mensajes-msg.sent .mensajes-msg-meta .mensajes-msg-time {
+  color: var(--obsidian-text-dim) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-msg.received .mensajes-msg-bubble {
+  background: var(--obsidian-bubble-received) !important;
+  color: var(--obsidian-text) !important;
+  border: 1px solid var(--obsidian-glass-border);
+  border-radius: 16px 16px 16px 2px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+[data-mc-theme="obsidian"] .mensajes-msg.received .mensajes-msg-bubble .mensajes-msg-text,
+[data-mc-theme="obsidian"] .mensajes-msg.received .mensajes-msg-bubble p {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-msg.received .mensajes-msg-bubble .mensajes-msg-time,
+[data-mc-theme="obsidian"] .mensajes-msg.received .mensajes-msg-meta .mensajes-msg-time {
+  color: var(--obsidian-text-dim) !important;
+}
+
+/* --- Ticks --- */
+[data-mc-theme="obsidian"] .mensajes-msg-tick.read {
+  color: var(--mc-blue, #3b82f6) !important;
+}
+
+/* --- Input Bar --- */
+[data-mc-theme="obsidian"] .mensajes-input-area {
+  background: rgba(13, 13, 20, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--obsidian-glass-border);
+}
+
+[data-mc-theme="obsidian"] .mensajes-input-field {
+  color: var(--obsidian-text) !important;
+  background: var(--obsidian-input-bg) !important;
+  border: 1px solid var(--obsidian-glass-border) !important;
+  border-radius: 12px !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-input-field::placeholder {
+  color: var(--obsidian-text-dim) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-input-btn {
+  color: var(--obsidian-text-muted) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-input-btn:hover {
+  color: var(--mc-blue, #3b82f6) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-send-btn {
+  background: var(--mc-blue, #3b82f6) !important;
+  color: #ffffff !important;
+}
+
+/* --- Action Panel --- */
+[data-mc-theme="obsidian"] .chat-action-panel {
+  z-index: 100;
+}
+
+[data-mc-theme="obsidian"] .chat-action-toggle {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: var(--obsidian-glass-border) !important;
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-toggle:hover {
+  background: rgba(255, 255, 255, 0.10) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-buttons {
+  background: rgba(15, 15, 25, 0.9) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--obsidian-glass-border) !important;
+  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.4);
+}
+
+[data-mc-theme="obsidian"] .chat-action-buttons > button,
+[data-mc-theme="obsidian"] .chat-action-buttons > div > button,
+[data-mc-theme="obsidian"] .chat-action-buttons button {
+  background: var(--obsidian-surface) !important;
+  border: 1px solid var(--obsidian-glass-border) !important;
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-buttons > button svg,
+[data-mc-theme="obsidian"] .chat-action-buttons > div > button svg,
+[data-mc-theme="obsidian"] .chat-action-buttons button svg {
+  color: var(--obsidian-text) !important;
+  stroke: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-buttons > button:hover,
+[data-mc-theme="obsidian"] .chat-action-buttons > div > button:hover,
+[data-mc-theme="obsidian"] .chat-action-buttons button:hover {
+  background: var(--obsidian-surface-hover) !important;
+  border-color: var(--mc-blue, #3b82f6) !important;
+  color: var(--mc-blue, #3b82f6) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-buttons > button:hover svg,
+[data-mc-theme="obsidian"] .chat-action-buttons > div > button:hover svg,
+[data-mc-theme="obsidian"] .chat-action-buttons button:hover svg {
+  color: var(--mc-blue, #3b82f6) !important;
+  stroke: var(--mc-blue, #3b82f6) !important;
+}
+
+/* --- Date Dividers --- */
+[data-mc-theme="obsidian"] .mensajes-date-divider span {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: var(--obsidian-text-muted) !important;
+  border: 1px solid var(--obsidian-glass-border);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: none;
+}
+
+/* --- Unread Badge --- */
+[data-mc-theme="obsidian"] .mensajes-chat-unread {
+  background: var(--mc-blue, #3b82f6) !important;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* --- Avatars --- */
+[data-mc-theme="obsidian"] .mensajes-chat-avatar-img {
+  border: 1px solid var(--obsidian-glass-border);
+  box-shadow: none;
+}
+
+/* --- Scrollbar --- */
+[data-mc-theme="obsidian"] .mensajes-chat-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+[data-mc-theme="obsidian"] .mensajes-chat-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- Settings / Menu Panels --- */
+[data-mc-theme="obsidian"] .chat-action-settings-menu,
+[data-mc-theme="obsidian"] .mensajes-settings-menu {
+  background: rgba(15, 15, 25, 0.95) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--obsidian-glass-border);
+}
+
+[data-mc-theme="obsidian"] .chat-action-settings-menu button,
+[data-mc-theme="obsidian"] .mensajes-settings-item {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-settings-menu button svg,
+[data-mc-theme="obsidian"] .mensajes-settings-item svg {
+  color: var(--obsidian-text) !important;
+  stroke: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-settings-menu button:hover,
+[data-mc-theme="obsidian"] .mensajes-settings-item:hover {
+  background: var(--obsidian-surface-hover) !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-settings-menu button.danger,
+[data-mc-theme="obsidian"] .mensajes-settings-item.danger {
+  color: #ef4444 !important;
+}
+
+[data-mc-theme="obsidian"] .chat-action-settings-menu button.danger svg,
+[data-mc-theme="obsidian"] .mensajes-settings-item.danger svg {
+  color: #ef4444 !important;
+  stroke: #ef4444 !important;
+}
+
+/* --- Empty State --- */
+[data-mc-theme="obsidian"] .mensajes-empty-state {
+  color: var(--obsidian-text-muted) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-main-empty {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-main-empty h2 {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-main-empty p {
+  color: var(--obsidian-text-muted) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-main-empty-icon {
+  background: var(--obsidian-surface) !important;
+  border-color: var(--obsidian-glass-border) !important;
+  color: var(--mc-blue, #3b82f6) !important;
+}
+
+/* --- Context menu --- */
+[data-mc-theme="obsidian"] .mensajes-context-menu {
+  background: rgba(15, 15, 25, 0.95) !important;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--obsidian-glass-border);
+}
+
+[data-mc-theme="obsidian"] .mensajes-context-menu button {
+  color: var(--obsidian-text) !important;
+}
+
+[data-mc-theme="obsidian"] .mensajes-context-menu button:hover {
+  background: var(--obsidian-surface-hover) !important;
+}
+
+/* --- Hover action buttons on messages --- */
+[data-mc-theme="obsidian"] .mc-msg-hover-actions {
+  background: rgba(15, 15, 25, 0.9) !important;
+  border-color: var(--obsidian-glass-border) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+[data-mc-theme="obsidian"] .mc-msg-hover-actions button {
+  color: var(--obsidian-text-muted) !important;
+}
+
+[data-mc-theme="obsidian"] .mc-msg-hover-actions button:hover {
+  color: var(--mc-blue, #3b82f6) !important;
+}
+
+/* --- Group modals: force readable inputs --- */
+[data-mc-theme="obsidian"] {
+  --mc-input-bg: rgba(255, 255, 255, 0.05);
+}
+
+/* --- Compose area --- */
+[data-mc-theme="obsidian"] .mensajes-compose {
+  background: rgba(13, 13, 20, 0.85) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--obsidian-glass-border);
+}

@@ -1,4 +1,4 @@
-﻿import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'mx.mexichat.app',
@@ -7,8 +7,8 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
-    // In production, remove this. Only for local dev:
-    // url: 'http://192.168.1.X:5173',
+    
+    url: 'https://mexichat.app',
   },
   plugins: {
     PushNotifications: {

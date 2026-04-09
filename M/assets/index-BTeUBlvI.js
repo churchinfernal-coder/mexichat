@@ -1,0 +1,1 @@
+import{w as i}from"./index-tYY8eg2N.js";import"./vendor-ui-CEnTFmyd.js";import"./vendor-utils-D84Wd4TD.js";import"./vendor-react-BQnJGy3K.js";import"./vendor-supabase-jY4wIOEF.js";const p=i("PushNotifications",{});export{p as PushNotifications};

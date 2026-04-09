@@ -1,4 +1,5 @@
 /**
+      {showOnboarding && user?.id && <OnboardingModal userId={user.id} onComplete={() => setShowOnboarding(false)} />}
  * MexiChat - Copyright (c) 2024-2026 MexiVanza. All Rights Reserved.
  * Proprietary and confidential. Unauthorized copying, modification,
  * distribution, or use of this software is strictly prohibited.
@@ -18,6 +19,7 @@ import {
   SettingsGearIcon,
 } from '@/components/home/HomeIcons';
 import '@/styles/HomeScreen.css';
+import OnboardingModal from '@/components/onboarding/OnboardingModal';
 
 const LANGS: { code: Language; flag: string }[] = [
   { code: 'es', flag: '\u{1F1F2}\u{1F1FD}' },
@@ -31,6 +33,10 @@ const HomeScreen: React.FC = () => {
   const { user } = useAuth();
   const unread = useUnreadCounts(user?.id);
   const [entered, setEntered] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (!user?.id) return false;
+    return !localStorage.getItem('mexichat_onboarded_' + user.id);
+  });
   const { t, lang, setLang } = useTranslation();
 
   useEffect(() => {

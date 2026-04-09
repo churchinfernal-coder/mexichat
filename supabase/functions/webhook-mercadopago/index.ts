@@ -1,4 +1,4 @@
-﻿import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { adminClient } from '../_shared/auth.ts';
 import { getPayment, verifySignature } from '../_shared/mercadopago.ts';
 

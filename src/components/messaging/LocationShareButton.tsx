@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 

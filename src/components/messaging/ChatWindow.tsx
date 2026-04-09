@@ -1,32 +1,26 @@
-﻿/**
- * MEXICHAT â€” Enterprise Chat Window v3.0
- *
- * v3.0 (v8 system):
- * - Message reactions (emoji on messages)
- * - Message editing (edit sent messages within 15min)
- * - Pinned messages integration
- * - Message delivery status (â�““ â�““â�““ blue)
- * - Starred messages
- * - Link previews
- * - Thread replies
- * - Archive / Export actions
- * - Draft restore
- * - Wallpaper support
- * - Search trigger
- * - Shared media trigger
+/**
+ * MexiChat - Copyright (c) 2024-2026 MexiVanza. All Rights Reserved.
+ * Proprietary and confidential. Unauthorized copying, modification,
+ * distribution, or use of this software is strictly prohibited.
+ * See LICENSE file for details.
  */
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ArrowLeft, Phone, Video, MoreVertical, Send,
   Smile, Paperclip, Check, CheckCheck, Ban,
-  Flag, Trash2, VolumeX, X, Mic, PhoneOff,
+  Flag, Trash2, VolumeX, X, Mic, PhoneOff, Camera,
   VideoOff, MicOff, Reply, Forward, CornerUpRight,
   Timer, CheckSquare, Edit3, Pin, Star, Search,
   Image as ImageIcon, Download, Archive, SmilePlus,
-  MapPin, Navigation,
+  MapPin, Navigation, Bell, Clock, DollarSign, Languages,
 } from 'lucide-react';
 import LocationShareButton from '@/components/messaging/LocationShareButton';
+import AudioSpeedPlayer from '@/components/chat/AudioSpeedPlayer';
+import TranslateButton from '@/components/chat/TranslateButton';
+import PaymentRequestCard from '@/components/chat/PaymentRequestCard';
+import { usePaymentRequests } from '@/hooks/usePaymentRequests';
+import { useAutoTranslate } from '@/hooks/useAutoTranslate';
+import ScheduleSendPicker from '@/components/chat/ScheduleSendPicker';
 import LocationMessage from '@/components/messaging/LocationMessage';
 import LiveLocationMap from '@/components/messaging/LiveLocationMap';
 import LiveLocationTimerPicker from '@/components/messaging/LiveLocationTimerPicker';
@@ -64,9 +58,9 @@ import type { PinnedMessage } from '@/hooks/usePinnedMessages';
 import type { DeliveryState } from '@/hooks/useDeliveryStatus';
 import type { LinkPreviewData } from '@/hooks/useLinkPreview';
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 // TYPES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 export interface Message {
   id: string;
@@ -110,7 +104,7 @@ interface ChatWindowProps {
   isMuted: boolean;
   isBlocked: boolean;
   autoAcceptCall?: 'audio' | 'video' | null;
-  // â”€â”€ v8 props â”€â”€
+  // — v8 props —
   reactions?: MessageReactions;
   onToggleReaction?: (messageId: string, emoji: string) => void;
   editingMessage?: EditState | null;
@@ -135,11 +129,16 @@ interface ChatWindowProps {
   wallpaper?: string | null;
   linkPreview?: { previews: Map<string, LinkPreviewData>; extractUrl: (text: string) => string | null; fetchPreview: (url: string) => Promise<LinkPreviewData | null> };
   threadReplies?: { openThread: (parentId: string, parentContent: string, parentSender: string, table: 'private_messages' | 'group_messages') => void };
+  onCreateReminder?: () => void;
+  onScheduleSend?: (content: string, sendAt: Date) => void;
+  onRequestPayment?: () => void;
+  paymentRequests?: ReturnType<typeof usePaymentRequests>;
+  otherUserName?: string;
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 function formatMessageTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -159,7 +158,7 @@ function getInitials(name: string): string {
 }
 
 function formatLastSeen(dateStr: string | null, isOnline: boolean): string {
-  if (isOnline) return 'En l\u00EDnea';
+  if (isOnline) return 'En linea';
   if (!dateStr) return 'Desconectado';
   const d = new Date(dateStr);
   const now = new Date();
@@ -167,7 +166,7 @@ function formatLastSeen(dateStr: string | null, isOnline: boolean): string {
   if (diff < 1) return 'Hace un momento';
   if (diff < 60) return `Hace ${diff} min`;
   if (diff < 1440) return `Hoy a las ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-  return `\u00DAlt. vez ${d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
+  return `Ult. vez ${d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
 }
 
 function formatCallDuration(seconds: number): string {
@@ -191,9 +190,18 @@ function truncateText(text: string, max: number): string {
   return text.slice(0, max) + '...';
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function isLocationJSON(text: string): boolean {
+  try {
+    const p = JSON.parse(text);
+    return typeof p.lat === 'number' && typeof p.lng === 'number';
+  } catch {
+    return false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // DECRYPTED MESSAGE CONTENT COMPONENT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 const DecryptedBubble: React.FC<{
   msg: Message;
@@ -222,15 +230,22 @@ const DecryptedBubble: React.FC<{
     }).catch(() => { setDecrypting(false); });
   }, [msg.id, msg.iv, msg.content, e2ee.isReady, e2ee, currentUserId, otherUserId, msg.senderId]);
 
+  const isSent = msg.senderId === currentUserId;
+
   if (decrypting) {
-    return <div className="mensajes-msg-bubble" id={`msg-${msg.id}`} style={{ opacity: 0.6, fontStyle: 'italic' }}>ðŸ”“ Descifrando...</div>;
+    return <div className="mensajes-msg-bubble" id={`msg-${msg.id}`} style={{ opacity: 0.6, fontStyle: 'italic' }}>{'\uD83D\uDD13'} Descifrando...</div>;
   }
+
+  if (msg.mediaType === 'location' || isLocationJSON(displayText)) {
+    return <LocationMessage content={displayText} isSent={isSent} />;
+  }
+
   return <div className="mensajes-msg-bubble" id={`msg-${msg.id}`}>{displayText}</div>;
 };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ═══════════════════════════════════════════════════════════════════════════
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
   currentUserId,
@@ -253,7 +268,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   isMuted,
   isBlocked,
   autoAcceptCall = null,
-  // v8 props
   reactions,
   onToggleReaction,
   editingMessage,
@@ -278,6 +292,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   wallpaper,
   linkPreview,
   threadReplies,
+  onCreateReminder,
+  onScheduleSend,
+  onRequestPayment,
+  paymentRequests: payReq,
+  otherUserName,
 }) => {
   const [inputText, setInputText] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -292,9 +311,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [showTimerPicker, setShowTimerPicker] = useState(false);
   const [showLiveLocation, setShowLiveLocation] = useState(false);
   const [showLiveTimerPicker, setShowLiveTimerPicker] = useState(false);
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [liveDurationMinutes, setLiveDurationMinutes] = useState(15);
-
-  // v8 local state
   const [editText, setEditText] = useState('');
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
 
@@ -302,24 +320,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const lastSendRef = useRef(0);
   const notifiedMessageIds = useRef(new Set<string>());
   const initialLoadComplete = useRef(false);
 
-  // Restore draft
   useEffect(() => {
     if (draft && !inputText) setInputText(draft);
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync edit text
   useEffect(() => {
     if (editingMessage) { setEditText(editingMessage.originalContent); inputRef.current?.focus(); }
     else setEditText('');
   }, [editingMessage]);
 
   const e2ee = useE2EE(currentUserId);
-
-  // Call system
   const { activeCall } = useCallContext();
   const { initiateCall, endActiveCall, toggleMute, toggleVideo } = useGlobalCallManager();
 
@@ -330,19 +345,28 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     catch (err: any) { toast.error(err.message || 'Error al iniciar la llamada'); }
   }, [currentUserId, otherUser?.id, conversationId, initiateCall, activeCall]);
 
-  // Feature hooks
+  const autoTranslate = useAutoTranslate('es');
+
+  const parsePaymentMsg = (content: string) => {
+    const m5 = content.match(/^\[PAYMENT_REQUEST:([a-f0-9-]+):(\d+(?:\.\d+)?):([A-Z]+):([a-f0-9-]+):(.*)?\]$/);
+    if (m5) return { id: m5[1], amount: parseFloat(m5[2]), currency: m5[3], requesterId: m5[4], desc: m5[5] || '' };
+    const m3 = content.match(/^\[PAYMENT_REQUEST:([a-f0-9-]+):(\d+(?:\.\d+)?):(.*)?\]$/);
+    if (m3) return { id: m3[1], amount: parseFloat(m3[2]), currency: 'MXN', requesterId: '', desc: m3[3] || '' };
+    return null;
+  };
+
   const audioRecorder = useAudioRecorder();
   const bulkSelect = useBulkSelect();
   const disappearing = useDisappearingMessages(conversationId);
-  const { isOtherTyping, sendTyping, sendStopTyping } = useTyping({ conversationId, currentUserId, otherUserId: otherUser.id });
+  const { isOtherTyping, otherActivity, sendTyping, sendRecording, sendUploading, sendStopTyping } = useTyping({ conversationId, currentUserId, otherUserId: otherUser.id });
 
   const visibleMessages = React.useMemo(() => {
     return messages.filter(m => !disappearing.isExpired(m.expiresAt ?? null));
   }, [messages, disappearing]);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
   // SMART NOTIFICATION SOUND
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -365,9 +389,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   useEffect(() => { notifiedMessageIds.current.clear(); initialLoadComplete.current = false; }, [conversationId]);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
   // UI EVENT HANDLERS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
     const handleClick = () => { setContextMenu(null); setShowReactionPicker(null); };
@@ -396,14 +420,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     return map;
   }, [visibleMessages]);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
   // AUDIO RECORDING + FILE UPLOAD
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
 
   const handleAudioSend = useCallback(async () => {
     const result = await audioRecorder.stopRecording();
     if (!result) return;
-    setUploading(true);
+    setUploading(true); sendUploading();
     const ext = result.file.name.split('.').pop() || 'webm';
     const fileName = `${currentUserId}/${conversationId}/${Date.now()}_voice.${ext}`;
     const { error } = await supabase.storage.from('chat-media').upload(fileName, result.file, { cacheControl: '3600', upsert: false });
@@ -416,7 +440,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const uploadFile = useCallback(async (file: File): Promise<{ url: string; type: string } | null> => {
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
-    if (!isImage && !isVideo) return null;
+    const isAudio = file.type.startsWith('audio/');
     if (file.size > CHAT_CONFIG.MAX_FILE_SIZE) return null;
     let fileToUpload = file;
     if (isImage) { try { fileToUpload = await compressImage(file); } catch { fileToUpload = file; } }
@@ -426,8 +450,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (error) { console.error('Upload error:', error); return null; }
     const { data: signedData } = await supabase.storage.from('chat-media').createSignedUrl(fileName, CHAT_CONFIG.SIGNED_URL_EXPIRY);
     if (!signedData?.signedUrl) return null;
-    return { url: signedData.signedUrl, type: isImage ? 'image' : 'video' };
+    return { url: signedData.signedUrl, type: isImage ? 'image' : isVideo ? 'video' : isAudio ? 'audio' : 'document' };
   }, [currentUserId, conversationId]);
+
+  const handleCameraCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    setUploading(true); sendUploading();
+    const result = await uploadFile(files[0]);
+    if (result) { onSendMessage('', result.url, result.type, replyingTo?.id); toast.success('Foto enviada'); }
+    else toast.error('Error al enviar foto');
+    setUploading(false);
+    if (replyingTo) setReplyingTo(null);
+  }, [uploadFile, onSendMessage, replyingTo, sendUploading]);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -436,12 +472,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (files.length > CHAT_CONFIG.MAX_BATCH_FILES) { toast.error(`Maximo ${CHAT_CONFIG.MAX_BATCH_FILES} archivos a la vez`); return; }
     const validFiles: File[] = [];
     for (const file of files) {
-      if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) { toast.error(`${file.name}: Solo imagenes y videos`); continue; }
+      const allowedPrefixes = ['image/', 'video/', 'audio/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats', 'application/vnd.ms-', 'text/', 'application/zip', 'application/x-rar'];
+      if (!allowedPrefixes.some(t => file.type.startsWith(t)) && !file.name.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|zip|rar|csv)$/i)) { toast.error(`${file.name}: Tipo no soportado`); continue; }
       if (file.size > CHAT_CONFIG.MAX_FILE_SIZE) { toast.error(`${file.name}: Max 10MB`); continue; }
       validFiles.push(file);
     }
     if (validFiles.length === 0) return;
-    setUploading(true);
+    setUploading(true); sendUploading();
     setUploadProgress({ current: 0, total: validFiles.length });
     let successCount = 0; let failCount = 0;
     for (let i = 0; i < validFiles.length; i++) {
@@ -455,14 +492,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (replyingTo) setReplyingTo(null);
     if (successCount > 0) toast.success(`${successCount} archivo${successCount > 1 ? 's' : ''} enviado${successCount > 1 ? 's' : ''}`);
     if (failCount > 0) toast.error(`${failCount} archivo${failCount > 1 ? 's' : ''} fallaron`);
-  }, [uploadFile, onSendMessage, replyingTo]);
+  }, [uploadFile, onSendMessage, replyingTo, sendUploading]);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
   // SEND TEXT / SAVE EDIT
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
 
   const handleSend = useCallback(() => {
-    // If editing, save edit instead
     if (editingMessage && onSaveEdit) {
       onSaveEdit(editText);
       return;
@@ -492,9 +528,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     inputRef.current?.focus();
   }, [editingMessage]);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
   // CONTEXT MENU HANDLERS
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ════════════════════��══════════════════════════════════════════════════
 
   const handleContextMenu = useCallback((e: React.MouseEvent, msgId: string) => {
     e.preventDefault();
@@ -537,23 +573,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const groupedMessages = groupMessagesByDate(visibleMessages);
 
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
   // RENDER
-  // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  // ═══════════════════════════════════════════════════════════════════════
 
   return (
     <div className="mensajes-main" style={{ position: 'relative', ...(wallpaper ? { background: wallpaper } : {}) }}>
 
-      {/* Active Call Overlay */}
+      {/* ────────── Active Call Overlay ────────── */}
       {activeCall?.active && activeCall.peerId === otherUser.id && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 50, background: activeCall.type === 'video' ? '#000' : 'linear-gradient(135deg, #0a0a0f 0%, #12071a 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           {activeCall.type === 'video' && (
             <div style={{ textAlign: 'center', zIndex: 2, color: 'white' }}>
               <div style={{ fontSize: '20px', fontWeight: 700, marginBottom: '8px' }}>{otherUser.fullName}</div>
               <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
-                {activeCall.status === 'calling' && 'ðŸ“ž Llamando...'}
-                {activeCall.status === 'ringing' && 'ðŸ”” Sonando...'}
-                {activeCall.status === 'connected' && `⏱️ ${formatCallDuration(activeCall.duration)}`}
+                {activeCall.status === 'calling' && '\uD83D\uDCDE Llamando...'}
+                {activeCall.status === 'ringing' && '\uD83D\uDD14 Sonando...'}
+                {activeCall.status === 'connected' && `\u23F1\uFE0F ${formatCallDuration(activeCall.duration)}`}
               </div>
             </div>
           )}
@@ -586,7 +622,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* Header */}
+      {/* ────────── Header ────────── */}
       <div className="mensajes-chat-header">
         <button className="mensajes-chat-header-back" onClick={onBack}><ArrowLeft size={20} /></button>
         <div className="mensajes-chat-header-avatar">
@@ -606,7 +642,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             )}
           </div>
         </div>
-        {/* v8 header buttons */}
         {onOpenSearch && (
           <button onClick={onOpenSearch} title="Buscar" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px' }}><Search size={18} /></button>
         )}
@@ -617,7 +652,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </button>
       </div>
 
-      {/* Floating Action Panel */}
+      {/* ────────── Floating Action Panel ────────── */}
       <div className={`chat-action-panel ${showActions ? 'open' : ''}`}>
         <button className="chat-action-toggle" onClick={() => setShowActions(!showActions)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -632,10 +667,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 <button onClick={() => { startCall('video'); setShowActions(false); }} title="Videollamada"><Video size={18} /></button>
                 <button onClick={() => { setShowTimerPicker(true); setShowActions(false); }} title="Mensajes temporales"><Timer size={18} /></button>
                 <LocationShareButton onSendLocation={(content, mediaType) => { onSendMessage(content, undefined, mediaType); setShowActions(false); }} onClose={() => setShowActions(false)} />
-                <button onClick={() => { setShowLiveTimerPicker(true); setShowActions(false); }} title="Ubicación en tiempo real"><Navigation size={18} /></button>
+                <button onClick={() => { setShowLiveTimerPicker(true); setShowActions(false); }} title="Ubicacion en tiempo real"><Navigation size={18} /></button>
+                {onCreateReminder && <button onClick={() => { onCreateReminder(); setShowActions(false); }} title="Recordatorio"><Bell size={18} /></button>}
+                {onRequestPayment && <button onClick={() => { onRequestPayment(); setShowActions(false); }} title="Solicitar pago"><DollarSign size={18} /></button>}
               </>
             )}
-            {/* v8 action buttons */}
             {onOpenMedia && (
               <button onClick={() => { onOpenMedia(); setShowActions(false); }} title="Media compartida"><ImageIcon size={18} /></button>
             )}
@@ -659,28 +695,17 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {showLiveLocation && (
-        <LiveLocationMap
-          conversationId={conversationId}
-          currentUserId={currentUserId}
-          currentUserName={currentUserName}
-          otherUserName={otherUser.fullName}
-          durationMinutes={liveDurationMinutes}
-          onClose={() => setShowLiveLocation(false)}
-        />
+        <LiveLocationMap conversationId={conversationId} currentUserId={currentUserId} currentUserName={currentUserName} otherUserName={otherUser.fullName} durationMinutes={liveDurationMinutes} onClose={() => setShowLiveLocation(false)} />
       )}
 
-      <LiveLocationTimerPicker
-        open={showLiveTimerPicker}
-        onSelect={(mins: number) => { setLiveDurationMinutes(mins); setShowLiveTimerPicker(false); setShowLiveLocation(true); }}
-        onClose={() => setShowLiveTimerPicker(false)}
-      />
+      <LiveLocationTimerPicker open={showLiveTimerPicker} onSelect={(mins: number) => { setLiveDurationMinutes(mins); setShowLiveTimerPicker(false); setShowLiveLocation(true); }} onClose={() => setShowLiveTimerPicker(false)} />
 
       <DisappearingTimerPicker open={showTimerPicker} currentTimer={disappearing.timer} onChange={(t: DisappearTimer) => disappearing.setTimer(t)} onClose={() => setShowTimerPicker(false)} />
 
-      {/* Messages */}
+      {/* ────────── Messages ────────── */}
       <div className="mensajes-messages">
         {visibleMessages.length === 0 ? (
-          <div className="mensajes-empty-state"><p>Envía un mensaje para iniciar la conversacion</p></div>
+          <div className="mensajes-empty-state"><p>Envia un mensaje para iniciar la conversacion</p></div>
         ) : (
           Array.from(groupedMessages.entries()).map(([dateKey, msgs]) => (
             <React.Fragment key={dateKey}>
@@ -705,60 +730,110 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     onClick={bulkSelect.isSelecting ? () => bulkSelect.toggleSelect(msg.id) : undefined}
                     style={{ position: 'relative', cursor: bulkSelect.isSelecting ? 'pointer' : undefined, outline: isSelected ? '2px solid var(--mc-blue)' : undefined, borderRadius: '2px', transition: 'background 0.3s' }}
                   >
+                    {/* Bulk select checkbox */}
                     {bulkSelect.isSelecting && (
                       <div style={{ position: 'absolute', top: '4px', [isSent ? 'left' : 'right']: '-28px', width: '20px', height: '20px', borderRadius: '2px', border: `2px solid ${isSelected ? 'var(--mc-blue)' : 'var(--mc-border)'}`, background: isSelected ? 'var(--mc-blue)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {isSelected && <Check size={12} style={{ color: '#0a0a0f' }} />}
                       </div>
                     )}
 
+                    {/* Forwarded badge */}
                     {msg.isForwarded && (
                       <div style={{ fontSize: '11px', color: 'var(--mc-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', fontStyle: 'italic', paddingLeft: '4px' }}>
                         <CornerUpRight size={12} /> Reenviado
                       </div>
                     )}
 
+                    {/* Reply preview */}
                     {repliedMsg && (
-                      <div style={{ background: isSent ? 'rgba(29,78,216,0.08)' : 'rgba(255,255,255,0.03)', borderLeft: '2px solid var(--mc-blue)', borderRadius: '0', padding: '6px 10px', marginBottom: '4px', fontSize: '12px', maxWidth: '100%', cursor: 'pointer' }}
-                        onClick={(e) => { e.stopPropagation(); const el = document.getElementById(`msg-${repliedMsg.id}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add('msg-highlight'); setTimeout(() => el?.classList.remove('msg-highlight'), 1500); }}>
-                        <div style={{ fontWeight: 600, color: 'var(--mc-blue)', marginBottom: '2px' }}>{repliedMsg.senderId === currentUserId ? 'Tú' : otherUser.fullName}</div>
-                        <div style={{ color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{repliedMsg.mediaUrl ? 'ðŸ“Ž Archivo' : truncateText(repliedMsg.content, 60)}</div>
+                      <div
+                        style={{ background: isSent ? 'rgba(29,78,216,0.08)' : 'rgba(255,255,255,0.03)', borderLeft: '2px solid var(--mc-blue)', borderRadius: '0', padding: '6px 10px', marginBottom: '4px', fontSize: '12px', maxWidth: '100%', cursor: 'pointer' }}
+                        onClick={(e) => { e.stopPropagation(); const el = document.getElementById(`msg-${repliedMsg.id}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add('highlight-flash'); setTimeout(() => el?.classList.remove('highlight-flash'), 1500); }}
+                      >
+                        <div style={{ fontWeight: 600, color: 'var(--mc-blue)', marginBottom: '2px' }}>{repliedMsg.senderId === currentUserId ? 'T\u00FA' : otherUser.fullName}</div>
+                        <div style={{ color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{repliedMsg.mediaUrl ? '\uD83D\uDCCE Archivo' : truncateText(repliedMsg.content, 60)}</div>
                       </div>
                     )}
 
-                    {msg.mediaType === 'location' && (
+                    {/* Location: unencrypted renders directly */}
+                    {(msg.mediaType === 'location' || (!msg.mediaType && isLocationJSON(msg.content))) && !msg.iv && (
                       <LocationMessage content={msg.content} isSent={isSent} />
                     )}
 
+                    {/* Media (image / video / audio / document) */}
                     {msg.mediaUrl && msg.mediaType !== 'location' && (
                       <div className="mensajes-msg-media">
-                        {msg.mediaType === 'image' ? <img src={msg.mediaUrl} alt="Media" loading="lazy" onClick={(e) => { e.stopPropagation(); setLightboxSrc(msg.mediaUrl); }} style={{ cursor: 'zoom-in' }} />
-                          : msg.mediaType === 'video' ? <video src={msg.mediaUrl} controls preload="metadata" />
-                          : msg.mediaType === 'audio' ? <audio src={msg.mediaUrl} controls preload="metadata" style={{ maxWidth: '240px' }} /> : null}
+                        {msg.mediaType === 'image' ? (
+                          <img src={msg.mediaUrl} alt="Media" loading="lazy" onClick={(e) => { e.stopPropagation(); setLightboxSrc(msg.mediaUrl); }} style={{ cursor: 'zoom-in' }} />
+                        ) : msg.mediaType === 'video' ? (
+                          <video src={msg.mediaUrl} controls preload="metadata" />
+                        ) : msg.mediaType === 'audio' ? (
+                          <AudioSpeedPlayer src={msg.mediaUrl!} />
+                        ) : msg.mediaType === 'document' ? (
+                          <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(99,102,241,0.08)', borderRadius: '10px', textDecoration: 'none', color: 'var(--mc-text)' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '14px', fontWeight: 700 }}>DOC</div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Documento adjunto</div>
+                              <div style={{ fontSize: '11px', color: 'var(--mc-text-muted)' }}>Toca para abrir</div>
+                            </div>
+                          </a>
+                        ) : null}
                       </div>
                     )}
 
-                    {msg.content && msg.mediaType !== 'location' && (
+                    {/* Text content: encrypted → DecryptedBubble, plain → inline */}
+                    {msg.content && (msg.mediaType !== 'location' || msg.iv) && !((!msg.mediaType) && isLocationJSON(msg.content)) && (
                       msg.iv ? (
                         <DecryptedBubble msg={msg} currentUserId={currentUserId} otherUserId={otherUser.id} e2ee={e2ee} />
                       ) : (
-                        <div className="mensajes-msg-bubble">{msg.content}</div>
+                        <div className="mensajes-msg-bubble">
+                          {(() => {
+                            const pr = parsePaymentMsg(msg.content);
+                            if (pr) {
+                              const isRequester = pr.requesterId === currentUserId;
+                              const isPayer = pr.requesterId !== currentUserId;
+                              const req = payReq?.getRequest(pr.id);
+                              const status = req?.status || 'pending';
+                              return (
+                                <div style={{ background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 16px', maxWidth: '280px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}><DollarSign size={18} /></div>
+                                    <div>
+                                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>{isRequester ? 'Solicitaste pago' : (otherUserName || otherUser.fullName) + ' solicita'}</div>
+                                      <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(pr.amount)}</div>
+                                    </div>
+                                  </div>
+                                  {pr.desc && <div style={{ fontSize: '13px', color: '#475569', padding: '8px 10px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px', marginBottom: '10px' }}>{pr.desc}</div>}
+                                  <div style={{ display: 'inline-flex', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, color: status === 'paid' ? '#22c55e' : status === 'declined' ? '#ef4444' : '#f59e0b', background: status === 'paid' ? 'rgba(34,197,94,0.08)' : status === 'declined' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)' }}>
+                                    {status === 'paid' ? 'Pagado' : status === 'declined' ? 'Rechazado' : status === 'cancelled' ? 'Cancelado' : 'Pendiente'}
+                                  </div>
+                                  {status === 'pending' && (
+                                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                                      {isPayer && <button onClick={() => window.open('/pagos?pay=' + pr.id + '&amount=' + pr.amount + '&to=' + pr.requesterId, '_blank')} style={{ flex: 1, padding: '8px', background: '#22c55e', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>Pagar</button>}
+                                      {isPayer && payReq && <button onClick={() => payReq.declineRequest(pr.id)} style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid #fecaca', borderRadius: '8px', color: '#ef4444', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Rechazar</button>}
+                                      {isRequester && payReq && <button onClick={() => payReq.cancelRequest(pr.id)} style={{ flex: 1, padding: '8px', background: 'rgba(148,163,184,0.1)', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#64748b', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return msg.content;
+                          })()}
+                        </div>
                       )
                     )}
 
-                    {/* v8: Link Preview */}
+                    {/* Link Preview */}
                     {urlInContent && linkPreview && (
-                      <LinkPreviewCard
-                        url={urlInContent}
-                        preview={linkPreview.previews.get(urlInContent) ?? null}
-                        onFetch={linkPreview.fetchPreview}
-                      />
+                      <LinkPreviewCard url={urlInContent} preview={linkPreview.previews.get(urlInContent) ?? null} onFetch={linkPreview.fetchPreview} />
                     )}
 
-                    {/* v8: Reactions */}
+                    {/* Reactions */}
                     {msgReactions.length > 0 && onToggleReaction && (
                       <ReactionBadge reactions={msgReactions} onToggle={(emoji) => onToggleReaction(msg.id, emoji)} />
                     )}
 
+                    {/* Meta: star, edited, timer, time, status */}
                     <div className="mensajes-msg-meta">
                       {isStarred && <Star size={10} style={{ color: '#fbbf24', fill: '#fbbf24', marginRight: '2px' }} />}
                       {msg.editedAt && <span style={{ fontSize: '10px', color: 'var(--mc-text-muted)', marginRight: '4px' }}>editado</span>}
@@ -780,19 +855,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       <div className="mc-msg-hover-actions" style={{ position: 'absolute', top: '-32px', [isSent ? 'right' : 'left']: '0', display: 'flex', gap: '2px', background: 'var(--mc-sidebar, #fff)', borderRadius: '8px', padding: '2px 4px', border: '1px solid var(--mc-border)', zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                         <button onClick={() => handleReply(msg.id)} title="Responder" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Reply size={14} /></button>
                         <button onClick={() => handleForward(msg.id)} title="Reenviar" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Forward size={14} /></button>
-                        {/* v8: Reaction trigger */}
                         {onToggleReaction && (
                           <button onClick={(e) => { e.stopPropagation(); setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id); }} title="Reaccionar" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><SmilePlus size={14} /></button>
                         )}
-                        {/* v8: Pin */}
                         {onPinMessage && (
                           <button onClick={() => { onPinMessage(msg.id, msg.content); setHoveredMsgId(null); }} title="Fijar" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Pin size={14} /></button>
                         )}
-                        {/* v8: Star */}
                         {onToggleStar && (
-                          <button onClick={() => onToggleStar(msg.id, msg.content)} title={isStarred ? 'Desmarcar' : 'Destacar'} style={{ background: 'none', border: 'none', color: isStarred ? '#fbbf24' : 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Star size={14} fill={isStarred ? '#fbbf24' : 'none'} /></button>
+                          <button onClick={() => onToggleStar(msg.id, msg.content)} title={isStarred ? 'Desmarcar' : 'Destacar'} style={{ background: 'none', border: 'none', color: isStarred ? '#fbbf24' : 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Star size={14} /></button>
                         )}
-                        {/* v8: Edit (own messages only) */}
                         {isSent && onStartEdit && canEditMessage?.(msg.senderId, msg.createdAt) && (
                           <button onClick={() => onStartEdit(msg.id, msg.content)} title="Editar" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Edit3 size={14} /></button>
                         )}
@@ -802,7 +873,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                     )}
 
-                    {/* v8: Reaction Picker popup */}
+                    {/* Translate */}
+                    {msg.content && !isSent && (
+                      <TranslateButton msgId={msg.id} content={msg.content} translation={autoTranslate.getTranslation(msg.id)} isTranslating={autoTranslate.isTranslating(msg.id)} shouldOffer={autoTranslate.shouldOfferTranslation(msg.content)} onTranslate={autoTranslate.translateMessage} onRemove={autoTranslate.removeTranslation} />
+                    )}
+
+                    {/* Reaction Picker popup */}
                     {showReactionPicker === msg.id && onToggleReaction && (
                       <div style={{ position: 'absolute', top: '-48px', [isSent ? 'right' : 'left']: '0', zIndex: 20 }} onMouseDown={(e) => e.stopPropagation()}>
                         <ReactionPicker onSelect={(emoji) => { onToggleReaction(msg.id, emoji); setShowReactionPicker(null); }} position="above" />
@@ -814,11 +890,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </React.Fragment>
           ))
         )}
-        {isOtherTyping && <TypingIndicator userName={otherUser.fullName} />}
+        {isOtherTyping && <TypingIndicator userName={otherUser.fullName} activity={otherActivity} />}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Context Menu */}
+      {/* ────────── Context Menu ────────── */}
       {contextMenu && (
         <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, background: 'var(--mc-sidebar)', border: '1px solid var(--mc-border)', borderRadius: '0', padding: '4px', zIndex: 60, minWidth: '180px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
           <button className="mensajes-settings-item" onClick={() => handleReply(contextMenu.msgId)}><Reply size={16} /> Responder</button>
@@ -841,10 +917,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
+      {/* ────────── Bulk Action Bar ────────── */}
       {bulkSelect.isSelecting && (
         <BulkActionBar selectedCount={bulkSelect.selectedCount} onDelete={handleBulkDeleteAction} onForward={handleBulkForward} onCopy={handleBulkCopy} onCancel={() => bulkSelect.stopSelecting()} />
       )}
 
+      {/* ────────── Blocked Banner ────────── */}
       {isBlocked && (
         <div style={{ padding: '12px 20px', background: 'rgba(239,68,68,0.06)', borderTop: '1px solid rgba(239,68,68,0.1)', textAlign: 'center', color: '#ef4444', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
           <Ban size={16} /> Has bloqueado a este usuario.
@@ -852,6 +930,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
+      {/* ────────── Upload Progress ────────── */}
       {uploading && (
         <div style={{ padding: '8px 20px', background: 'rgba(29,78,216,0.06)', borderTop: '1px solid rgba(29,78,216,0.1)', textAlign: 'center', color: 'var(--mc-blue)', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
           <div style={{ width: '16px', height: '16px', border: '2px solid var(--mc-blue)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
@@ -860,7 +939,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* Edit Bar */}
+      {/* ────────── Edit Bar ────────── */}
       {editingMessage && onCancelEdit && (
         <div style={{ padding: '8px 20px', background: 'rgba(59,130,246,0.06)', borderTop: '1px solid rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Edit3 size={14} style={{ color: '#3b82f6', flexShrink: 0 }} />
@@ -872,41 +951,44 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* Reply Bar */}
+      {/* ────────── Reply Bar ────────── */}
       {replyingTo && !isBlocked && !editingMessage && (
         <div style={{ padding: '8px 20px', background: 'var(--mc-sidebar)', borderTop: '1px solid var(--mc-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '2px', height: '36px', background: 'var(--mc-blue)', flexShrink: 0 }} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--mc-blue)' }}>{replyingTo.senderId === currentUserId ? 'Tú' : otherUser.fullName}</div>
-            <div style={{ fontSize: '13px', color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{replyingTo.mediaUrl ? 'ðŸ“Ž Archivo' : truncateText(replyingTo.content, 80)}</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--mc-blue)' }}>{replyingTo.senderId === currentUserId ? 'T\u00FA' : otherUser.fullName}</div>
+            <div style={{ fontSize: '13px', color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{replyingTo.mediaUrl ? '\uD83D\uDCCE Archivo' : truncateText(replyingTo.content, 80)}</div>
           </div>
           <button onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '4px' }}><X size={16} /></button>
         </div>
       )}
 
-      {/* Input */}
+      {/* ────────── Input Area ────────── */}
       {!isBlocked && !bulkSelect.isSelecting && (
         <div className="mensajes-input-area" style={{ position: 'relative' }}>
           {showEmojiPicker && <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />}
 
           <div className="mensajes-input-actions">
-            <button className="mensajes-input-btn" title="Emoji" onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              style={showEmojiPicker ? { color: 'var(--mc-blue)' } : {}}>
+            <button className="mensajes-input-btn" title="Emoji" onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={showEmojiPicker ? { color: 'var(--mc-blue)' } : {}}>
               <Smile size={20} />
             </button>
             {!editingMessage && (
-              <button className="mensajes-input-btn" title="Adjuntar" onClick={() => fileInputRef.current?.click()} disabled={uploading || audioRecorder.isRecording}
-                style={uploading || audioRecorder.isRecording ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
-                <Paperclip size={20} />
-              </button>
+              <>
+                <button className="mensajes-input-btn" title="Camara" onClick={() => cameraInputRef.current?.click()} disabled={uploading || audioRecorder.isRecording} style={uploading || audioRecorder.isRecording ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
+                  <Camera size={20} />
+                </button>
+                <input ref={cameraInputRef} type="file" accept="image/*" capture="user" style={{ display: 'none' }} onChange={handleCameraCapture} />
+                <button className="mensajes-input-btn" title="Adjuntar" onClick={() => fileInputRef.current?.click()} disabled={uploading || audioRecorder.isRecording} style={uploading || audioRecorder.isRecording ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
+                  <Paperclip size={20} />
+                </button>
+              </>
             )}
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm" style={{ display: 'none' }} onChange={handleFileSelect} multiple />
+            <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv" style={{ display: 'none' }} onChange={handleFileSelect} multiple />
           </div>
 
           {audioRecorder.isRecording ? (
             <div style={{ flex: 1 }}>
-              <AudioRecorderButton isRecording={audioRecorder.isRecording} duration={audioRecorder.duration} isSupported={audioRecorder.isSupported}
-                onStart={() => audioRecorder.startRecording()} onStop={handleAudioSend} onCancel={() => audioRecorder.cancelRecording()} />
+              <AudioRecorderButton isRecording={audioRecorder.isRecording} duration={audioRecorder.duration} isSupported={audioRecorder.isSupported} onStart={() => { audioRecorder.startRecording(); sendRecording(); }} onStop={handleAudioSend} onCancel={() => { audioRecorder.cancelRecording(); sendStopTyping(); }} />
             </div>
           ) : (
             <>
@@ -919,12 +1001,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   maxLength={CHAT_CONFIG.MAX_MESSAGE_LENGTH} />
               </div>
               {(editingMessage ? editText.trim() : inputText.trim()) ? (
-                <button className="mensajes-send-btn" onClick={handleSend} disabled={uploading} title={editingMessage ? 'Guardar' : 'Enviar'}>
-                  {editingMessage ? <Check size={18} /> : <Send size={18} />}
-                </button>
+                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                  <ScheduleSendPicker open={showSchedulePicker} onClose={() => setShowSchedulePicker(false)} onSchedule={(d) => { if (onScheduleSend && inputText.trim()) { onScheduleSend(inputText.trim(), d); setInputText(''); setShowSchedulePicker(false); } }} />
+                  <button className="mensajes-send-btn" onClick={handleSend} onContextMenu={(e) => { e.preventDefault(); if (!editingMessage && inputText.trim() && onScheduleSend) setShowSchedulePicker(true); }} disabled={uploading} title={editingMessage ? 'Guardar' : 'Enviar (clic derecho = programar)'}>
+                    {editingMessage ? <Check size={18} /> : <Send size={18} />}
+                  </button>
+                </div>
               ) : !editingMessage ? (
-                <AudioRecorderButton isRecording={false} duration={0} isSupported={audioRecorder.isSupported}
-                  onStart={() => audioRecorder.startRecording()} onStop={handleAudioSend} onCancel={() => audioRecorder.cancelRecording()} />
+                <AudioRecorderButton isRecording={false} duration={0} isSupported={audioRecorder.isSupported} onStart={() => { audioRecorder.startRecording(); sendRecording(); }} onStop={handleAudioSend} onCancel={() => { audioRecorder.cancelRecording(); sendStopTyping(); }} />
               ) : null}
             </>
           )}

@@ -20,12 +20,33 @@ export function useMessages(conversationId: string | null, userId: string | unde
       try {
         return await MessageEncryption.decrypt(content, senderId);
       } catch (error) {
-        console.error('❌ [DECRYPT] Failed:', error);
-        return '[🔒 Mensaje cifrado]';
+        console.error('[DECRYPT] Failed:', error);
+        return '[\uD83D\uDD12 Mensaje cifrado]';
       }
     }
     return content;
   }, []);
+
+  // ─── Media type display helpers ───
+  const mediaPreview = (mediaType?: string | null): string => {
+    switch (mediaType) {
+      case 'image': return '\uD83D\uDCF7 Imagen';
+      case 'video': return '\uD83C\uDFA5 Video';
+      case 'audio': return '\uD83C\uDFB5 Audio';
+      case 'document': return '\uD83D\uDCC4 Documento';
+      default: return '\uD83D\uDCCE Archivo';
+    }
+  };
+
+  const mediaPushText = (mediaType?: string | null): string => {
+    switch (mediaType) {
+      case 'image': return '\uD83D\uDCF7 Te envi\u00F3 una imagen';
+      case 'video': return '\uD83C\uDFA5 Te envi\u00F3 un video';
+      case 'audio': return '\uD83C\uDFB5 Te envi\u00F3 un audio';
+      case 'document': return '\uD83D\uDCC4 Te envi\u00F3 un documento';
+      default: return '\uD83D\uDCCE Te envi\u00F3 un archivo';
+    }
+  };
 
   // ─── Fetch initial messages ───
   const fetchMessages = useCallback(async () => {
@@ -159,11 +180,22 @@ export function useMessages(conversationId: string | null, userId: string | unde
             )
           );
         })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'private_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        }, (payload) => {
+          const deletedId = (payload.old as any)?.id;
+          if (deletedId) {
+            setMessages(prev => prev.filter(m => m.id !== deletedId));
+          }
+        })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.log(`[Messages] ✅ Realtime connected: ${conversationId.slice(0, 8)}`);
+            console.log(`[Messages] Realtime connected: ${conversationId.slice(0, 8)}`);
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.warn(`[Messages] ⚠️ Realtime ${status} — reconnecting in 3s`);
+            console.warn(`[Messages] Realtime ${status} - reconnecting in 3s`);
             reconnectTimerRef.current = setTimeout(subscribe, 3000);
           }
         });
@@ -186,7 +218,13 @@ export function useMessages(conversationId: string | null, userId: string | unde
   }, [conversationId, userId, decryptContent]);
 
   // ─── Send message ───
-  const sendMessage = async (content: string, mediaUrl?: string, mediaType?: 'image' | 'video') => {
+  const sendMessage = async (
+    content: string,
+    mediaUrl?: string,
+    mediaType?: 'image' | 'video' | 'audio' | 'document' | 'location',
+    replyTo?: string,
+    isForwarded?: boolean,
+  ) => {
     if (!conversationId || !userId || (!content.trim() && !mediaUrl)) return;
 
     // Get conversation to find recipient
@@ -206,7 +244,7 @@ export function useMessages(conversationId: string | null, userId: string | unde
       try {
         encryptedContent = await MessageEncryption.encrypt(content.trim(), recipientId);
       } catch (error) {
-        console.error('❌ [ENCRYPTION] Failed, sending unencrypted:', error);
+        console.error('[ENCRYPTION] Failed, sending unencrypted:', error);
         encryptedContent = content.trim();
       }
     }
@@ -219,6 +257,8 @@ export function useMessages(conversationId: string | null, userId: string | unde
     };
     if (mediaUrl) messageData.media_url = mediaUrl;
     if (mediaType) messageData.media_type = mediaType;
+    if (replyTo) messageData.reply_to = replyTo;
+    if (isForwarded) messageData.is_forwarded = true;
 
     // ═══ OPTIMISTIC INSERT — show message instantly ═══
     const optimisticId = `optimistic-${Date.now()}`;
@@ -231,8 +271,8 @@ export function useMessages(conversationId: string | null, userId: string | unde
       media_type: mediaType || null,
       is_read: false,
       created_at: new Date().toISOString(),
-      reply_to: null,
-      is_forwarded: false,
+      reply_to: replyTo || null,
+      is_forwarded: isForwarded || false,
     } as any;
 
     setMessages(prev => [...prev, optimisticMsg]);
@@ -261,12 +301,10 @@ export function useMessages(conversationId: string | null, userId: string | unde
 
     // ═══ UPDATE CONVERSATION — encrypted preview ═══
     const previewText = MessageEncryption.isInitialized()
-      ? '🔒 Mensaje cifrado'
+      ? '\uD83D\uDD12 Mensaje cifrado'
       : content.trim().slice(0, 100);
 
-    const displayPreview = mediaUrl
-      ? (mediaType === 'image' ? '📷 Imagen' : '🎥 Video')
-      : previewText;
+    const displayPreview = mediaUrl ? mediaPreview(mediaType) : previewText;
 
     await (supabase
       .from('conversations' as any)
@@ -277,7 +315,7 @@ export function useMessages(conversationId: string | null, userId: string | unde
       } as any)
       .eq('id', conversationId) as any);
 
-    // ═══ Get sender profile (used by both push + in-app notify) ═══
+    // ═══ Get sender profile ═══
     let senderName = 'Nuevo mensaje';
     let senderAvatar: string | null = null;
 
@@ -293,10 +331,10 @@ export function useMessages(conversationId: string | null, userId: string | unde
     } catch {}
 
     const notifBody = mediaUrl
-      ? (mediaType === 'image' ? '📷 Te envió una imagen' : '🎥 Te envió un video')
+      ? mediaPushText(mediaType)
       : content.trim().slice(0, 100);
 
-    // ═══ 🔔 PUSH NOTIFICATION — delivers when app is closed ═══
+    // ═══ PUSH NOTIFICATION ═══
     try {
       await sendPushNotification({
         targetUserId: recipientId,
@@ -309,7 +347,7 @@ export function useMessages(conversationId: string | null, userId: string | unde
       });
     } catch {}
 
-    // ═══ 📢 IN-APP BROADCAST — delivers when app is open but in different conversation ═══
+    // ═══ IN-APP BROADCAST ═══
     try {
       const notifyChannel = supabase.channel(`msg-notify:${recipientId}`);
       await new Promise<void>((resolve) => {
@@ -322,9 +360,7 @@ export function useMessages(conversationId: string | null, userId: string | unde
                 to: recipientId,
                 from: userId,
                 fromName: senderName,
-                preview: mediaUrl
-                  ? (mediaType === 'image' ? '📷 Imagen' : '🎥 Video')
-                  : content.trim().slice(0, 100),
+                preview: mediaUrl ? mediaPreview(mediaType) : content.trim().slice(0, 100),
                 conversationId,
                 avatarUrl: senderAvatar,
               },
@@ -340,13 +376,63 @@ export function useMessages(conversationId: string | null, userId: string | unde
             resolve();
           }
         });
-        // Safety timeout
-        setTimeout(() => {
-          supabase.removeChannel(notifyChannel);
-          resolve();
-        }, 3000);
+        setTimeout(() => { supabase.removeChannel(notifyChannel); resolve(); }, 3000);
       });
     } catch {}
+  };
+
+  // ─── Delete message ───
+  const deleteMessage = async (messageId: string) => {
+    if (!userId) return;
+    const { error } = await (supabase
+      .from('private_messages' as any)
+      .delete()
+      .eq('id', messageId)
+      .eq('sender_id', userId) as any);
+
+    if (!error) {
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+    }
+    return !error;
+  };
+
+  // ─── Edit message ───
+  const editMessage = async (messageId: string, newContent: string) => {
+    if (!userId || !newContent.trim()) return false;
+
+    let encryptedContent = newContent.trim();
+    if (MessageEncryption.isInitialized()) {
+      try {
+        // Get conversation to find recipient for encryption
+        const { data: convo } = await (supabase
+          .from('conversations' as any)
+          .select('user_1, user_2')
+          .eq('id', conversationId)
+          .single() as any);
+        if (convo) {
+          const recipientId = convo.user_1 === userId ? convo.user_2 : convo.user_1;
+          encryptedContent = await MessageEncryption.encrypt(newContent.trim(), recipientId);
+        }
+      } catch {
+        encryptedContent = newContent.trim();
+      }
+    }
+
+    const { error } = await (supabase
+      .from('private_messages' as any)
+      .update({ content: encryptedContent, edited_at: new Date().toISOString() } as any)
+      .eq('id', messageId)
+      .eq('sender_id', userId) as any);
+
+    if (!error) {
+      setMessages(prev =>
+        prev.map(m => m.id === messageId
+          ? { ...m, content: newContent.trim(), edited_at: new Date().toISOString() }
+          : m
+        )
+      );
+    }
+    return !error;
   };
 
   // ─── Start or find conversation ───
@@ -382,6 +468,8 @@ export function useMessages(conversationId: string | null, userId: string | unde
     loadingMore,
     loadMore,
     sendMessage,
+    deleteMessage,
+    editMessage,
     startConversation,
     refetch: fetchMessages,
   };

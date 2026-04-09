@@ -1,4 +1,4 @@
-﻿/**
+/**
  * MexiChat - Native Media Service
  * Bridges Capacitor Camera/Filesystem APIs with web fallback.
  * On native (Android/iOS): uses device camera or photo gallery directly.

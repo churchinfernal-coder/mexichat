@@ -1,4 +1,4 @@
-﻿import { X, Clock, Navigation } from 'lucide-react';
+import { X, Clock, Navigation } from 'lucide-react';
 
 export interface LiveDurationOption {
   label: string;
