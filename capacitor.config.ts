@@ -7,8 +7,6 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
-    
-    url: 'https://mexichat.app',
   },
   plugins: {
     PushNotifications: {
