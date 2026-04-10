@@ -1,23 +1,3 @@
-/**
- * MexiChat - Copyright (c) 2024-2026 MexiVanza. All Rights Reserved.
- * Proprietary and confidential. Unauthorized copying, modification,
- * distribution, or use of this software is strictly prohibited.
- * See LICENSE file for details.
- */
-
-/**
- * MEXICHAT – Auth Page
- * 
- * Enterprise-grade authentication with:
- * - Phone & Email auth (OTP verification)
- * - Robust error handling & recovery
- * - Rate limiting (client + server)
- * - Security best practices (XSS, CSRF, input sanitization)
- * - Performance optimized (memoization, lazy loading)
- * - Accessibility (a11y)
- * - Offline support
- */
-
 import { 
   useState, 
   useRef, 
@@ -84,7 +64,7 @@ function sanitizeName(input: string): string {
 }
 
 /**
- * Sanitize phone input
+ * Sanitize phone input (for display — keeps formatting chars)
  * - Removes invalid characters
  * - Preserves formatting markers (+, -, spaces, parentheses)
  * - Enforces max length
@@ -95,6 +75,25 @@ function sanitizePhone(input: string): string {
     .trim()
     .replace(/[^\d+\-() ]/g, '')
     .slice(0, 20);
+}
+
+/**
+ * Normalize phone to E.164 format for all Supabase/Twilio API calls.
+ * Strips spaces, dashes, parentheses — keeps only digits and leading +.
+ * 
+ * "+52 55 1234 5678"  → "+525512345678"
+ * "52 55 1234 5678"   → "+525512345678"
+ * "(55) 1234-5678"    → "+5512345678"
+ * 
+ * CRITICAL: Supabase verifyOtp does a strict string match on phone.
+ * If the phone sent to signInWithOtp differs from verifyOtp by even
+ * one space, verification fails with "Invalid OTP".
+ */
+function normalizePhone(input: string): string {
+  if (!input || typeof input !== 'string') return '';
+  const stripped = input.replace(/[^\d+]/g, '');
+  if (!stripped) return '';
+  return stripped.startsWith('+') ? stripped : `+${stripped}`;
 }
 
 /**
@@ -479,7 +478,7 @@ interface AuthInputProps {
   onRightClick?: () => void;
   maxLength?: number;
   disabled?: boolean;
-  error?: string | null;  // ← Change this line from 'string | undefined' to 'string | null'
+  error?: string | null;
   autoComplete?: string;
 }
 
@@ -557,16 +556,16 @@ function AuthInput({
         )}
       </div>
       {error && (
-  <p 
-    id={`${id}-error`}
-    className="text-[11px] flex items-center gap-1" 
-    style={{ color: C.danger }}
-    role="alert"
-  >
-    <AlertCircle className="h-3 w-3" />
-    {escapeHtml(error)}
-  </p>
-)}
+        <p 
+          id={`${id}-error`}
+          className="text-[11px] flex items-center gap-1" 
+          style={{ color: C.danger }}
+          role="alert"
+        >
+          <AlertCircle className="h-3 w-3" />
+          {escapeHtml(error)}
+        </p>
+      )}
       {hint && (
         <p 
           id={`${id}-hint`}
@@ -670,9 +669,9 @@ export const Auth = () => {
   const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const retryCountRef = useRef<number>(0);
 
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
   // EFFECTS
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
 
   // Listen for online/offline changes
   useEffect(() => {
@@ -696,9 +695,49 @@ export const Auth = () => {
     };
   }, []);
 
-  // ──────────────────────────────────────────────────────────────────────
+  // ✅ FIX: Handle email confirmation from URL
+  useEffect(() => {
+    const handleEmailConfirmation = async () => {
+      const hash = window.location.hash;
+      if (!hash.includes('access_token')) return;
+
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (error || !data.session) {
+          console.warn('[Auth] Email confirmation failed:', error);
+          dispatch({
+            type: 'SET_ERROR',
+            payload: {
+              error: 'Email confirmation failed. Please try again.',
+              code: 'EMAIL_CONFIRMATION_FAILED',
+            },
+          });
+          return;
+        }
+
+        // Email confirmed! Session is now active
+        signUpLimiter.reset();
+        dispatch({ type: 'SET_PHASE', payload: 'success' });
+        
+        toast({
+          title: t.welcome,
+          description: t.signUpSuccess,
+        });
+
+        // Navigate to home after confirmation
+        await safeNavigate('/');
+      } catch (err) {
+        console.error('[Auth] Confirmation handler error:', err);
+      }
+    };
+
+    handleEmailConfirmation();
+  }, []);
+
+  // ──────────────────────────────────────────────────────────────────
   // CALLBACKS
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
 
   const toggleAuthMethod = useCallback(
     () => setAuthMethod((p) => p === 'email' ? 'phone' : 'email'),
@@ -832,18 +871,18 @@ export const Auth = () => {
     []
   );
 
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
   // PASSWORD STRENGTH (memoized)
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
 
   const pwStrength = useMemo(
     () => getPasswordStrength(signUpPassword),
     [signUpPassword]
   );
 
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
   // SIGN IN
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
 
   const handleSignIn = useCallback(
     async (e: React.FormEvent) => {
@@ -931,8 +970,10 @@ export const Auth = () => {
           // Safe navigation
           await safeNavigate('/');
         } else {
-          // Phone auth
-          const validation = phoneSchema.safeParse(signInPhone);
+          // Phone auth — normalize to E.164 before validation & API call
+          const e164Phone = normalizePhone(signInPhone);
+
+          const validation = phoneSchema.safeParse(e164Phone);
 
           if (!validation.success) {
             dispatch({
@@ -948,7 +989,7 @@ export const Auth = () => {
           dispatch({ type: 'SET_PHASE', payload: 'submitting' });
 
           const { error } = await supabase.auth.signInWithOtp({
-            phone: signInPhone.trim(),
+            phone: e164Phone,
           });
 
           if (error) {
@@ -963,7 +1004,7 @@ export const Auth = () => {
           }
 
           // Success - transition to OTP view
-          setOtpTarget(signInPhone.trim());
+          setOtpTarget(e164Phone);
           setOtpCode('');
           setView('otp');
           startOtpCooldown();
@@ -972,7 +1013,7 @@ export const Auth = () => {
 
           toast({
             title: '✓ ' + t.checkPhone,
-            description: `${t.otpSent} ${signInPhone}`,
+            description: `${t.otpSent} ${e164Phone}`,
           });
         }
       } catch (err) {
@@ -1001,9 +1042,9 @@ export const Auth = () => {
     ]
   );
 
-  // ──────────────────────────────────────────────────────────────────────
+   // ────────────────────────────────────────────────────────────────
   // SIGN UP
-  // ──────────────────────────────────────────────────────────────────────
+  // ────────────────────────────────────────────────────────────────
 
   const handleSignUp = useCallback(
     async (e: React.FormEvent) => {
@@ -1063,6 +1104,7 @@ export const Auth = () => {
 
           dispatch({ type: 'SET_PHASE', payload: 'submitting' });
 
+          // Call authSignUp with email confirmation
           const { error } = await authSignUp(
             signUpEmail.trim(),
             signUpPassword,
@@ -1086,14 +1128,32 @@ export const Auth = () => {
           dispatch({ type: 'SET_PHASE', payload: 'success' });
           setView('confirm-email');
           dispatch({ type: 'CLEAR_ERROR' });
+
+          toast({
+            title: t.welcome,
+            description: t.checkEmail,
+          });
         } else {
-          // Phone signup
+          // Phone signup — normalize to E.164 before validation & API call
+          const rawPhone = signUpPhone.trim();
+          
+          // ✅ DEBUG: Log raw input
+          console.log('[Signup Phone] Raw input:', rawPhone);
+          
+          const e164Phone = normalizePhone(rawPhone);
+          
+          // ✅ DEBUG: Log normalized phone
+          console.log('[Signup Phone] Normalized:', e164Phone);
+          console.log('[Signup Phone] Length:', e164Phone.length);
+          console.log('[Signup Phone] Starts with +:', e164Phone.startsWith('+'));
+          console.log('[Signup Phone] CharCodes:', Array.from(e164Phone).map(c => c.charCodeAt(0)));
+
           const validation = z.object({
             phone: phoneSchema,
             password: passwordSchema,
             fullName: nameSchema,
           }).safeParse({
-            phone: signUpPhone,
+            phone: e164Phone,
             password: signUpPassword,
             fullName: name,
           });
@@ -1111,30 +1171,63 @@ export const Auth = () => {
 
           dispatch({ type: 'SET_PHASE', payload: 'submitting' });
 
-          const { error } = await supabase.auth.signUp({
-            phone: signUpPhone.trim(),
-            password: signUpPassword,
-            options: {
-              data: {
-                full_name: name,
-                account_type: 'user',
+          // First, check if phone already exists (handle gracefully)
+          try {
+            // Attempt signup - may fail if phone exists
+            const { error: signUpError } = await supabase.auth.signUp({
+              phone: e164Phone,
+              password: signUpPassword,
+              options: {
+                data: {
+                  full_name: name,
+                  account_type: 'user',
+                },
               },
-            },
+            });
+
+            // If phone already registered, still allow OTP
+            if (signUpError && !signUpError.message.includes('already')) {
+              throw signUpError;
+            }
+
+            console.log('[Signup Phone] Account created/exists, sending OTP...');
+          } catch (signUpErr) {
+            // If not a "already exists" error, fail
+            if (!String(signUpErr).includes('already')) {
+              dispatch({
+                type: 'SET_ERROR',
+                payload: {
+                  error: getErrorMessage(signUpErr as Error, 'SIGNUP_FAILED'),
+                  code: 'SIGNUP_FAILED',
+                },
+              });
+              return;
+            }
+            console.log('[Signup Phone] Phone already registered, proceeding to OTP');
+          }
+
+          // Now send OTP - use exact normalized phone
+          console.log('[Signup Phone] Sending OTP to:', e164Phone);
+          
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            phone: e164Phone,
           });
 
-          if (error) {
+          if (otpError) {
+            console.error('[Signup Phone] OTP send failed:', otpError);
             dispatch({
               type: 'SET_ERROR',
               payload: {
-                error: getErrorMessage(error, 'SIGNUP_OTP_FAILED'),
-                code: 'SIGNUP_OTP_FAILED',
+                error: getErrorMessage(otpError, 'OTP_SEND_FAILED'),
+                code: 'OTP_SEND_FAILED',
               },
             });
             return;
           }
 
-          // Success - transition to OTP
-          setOtpTarget(signUpPhone.trim());
+          // Success - transition to OTP with EXACT same phone
+          console.log('[Signup Phone] OTP sent successfully, storing:', e164Phone);
+          setOtpTarget(e164Phone);
           setOtpCode('');
           setView('otp');
           startOtpCooldown();
@@ -1143,11 +1236,12 @@ export const Auth = () => {
 
           toast({
             title: '✓ ' + t.signUpSuccess,
-            description: `${t.otpSent} ${signUpPhone}`,
+            description: `${t.otpSent} ${e164Phone}`,
           });
         }
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
+        console.error('[Signup] Exception:', error);
         dispatch({
           type: 'SET_ERROR',
           payload: {
@@ -1172,9 +1266,9 @@ export const Auth = () => {
     ]
   );
 
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
   // VERIFY OTP
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
 
   const handleVerifyOtp = useCallback(
     async (e: React.FormEvent) => {
@@ -1219,6 +1313,15 @@ export const Auth = () => {
       try {
         dispatch({ type: 'SET_PHASE', payload: 'submitting' });
 
+        // ✅ DEBUG: Log verification details
+        console.log('[OTP Verify] Starting verification');
+        console.log('[OTP Verify] Phone target:', otpTarget);
+        console.log('[OTP Verify] Phone length:', otpTarget.length);
+        console.log('[OTP Verify] Phone charCodes:', Array.from(otpTarget).map(c => c.charCodeAt(0)));
+        console.log('[OTP Verify] Code:', otpCode);
+        console.log('[OTP Verify] Code length:', otpCode.length);
+
+        // Verify OTP with strict phone matching
         const { error } = await supabase.auth.verifyOtp({
           phone: otpTarget,
           token: otpCode,
@@ -1226,6 +1329,7 @@ export const Auth = () => {
         });
 
         if (error) {
+          console.error('[OTP Verify] Verification failed:', error.message);
           dispatch({
             type: 'SET_ERROR',
             payload: {
@@ -1237,6 +1341,7 @@ export const Auth = () => {
         }
 
         // Success
+        console.log('[OTP Verify] SUCCESS!');
         otpLimiter.reset();
         retryCountRef.current = 0;
         dispatch({ type: 'SET_PHASE', payload: 'success' });
@@ -1250,6 +1355,7 @@ export const Auth = () => {
         await safeNavigate('/', 2000);
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
+        console.error('[OTP Verify] Exception:', error);
         dispatch({
           type: 'SET_ERROR',
           payload: {
@@ -1278,11 +1384,15 @@ export const Auth = () => {
     dispatch({ type: 'SET_RETRYING', payload: true });
 
     try {
+      console.log('[OTP Resend] Resending to:', otpTarget);
+      
+      // otpTarget is already E.164 normalized
       const { error } = await supabase.auth.signInWithOtp({
         phone: otpTarget,
       });
 
       if (error) {
+        console.error('[OTP Resend] Failed:', error.message);
         dispatch({
           type: 'SET_ERROR',
           payload: {
@@ -1292,6 +1402,8 @@ export const Auth = () => {
         });
         return;
       }
+
+      console.log('[OTP Resend] Success');
 
       // Exponential backoff: 60s, 90s, 120s...
       const baseBackoff = 60;
@@ -1307,6 +1419,7 @@ export const Auth = () => {
       });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
+      console.error('[OTP Resend] Exception:', error);
       dispatch({
         type: 'SET_ERROR',
         payload: {
@@ -1319,9 +1432,9 @@ export const Auth = () => {
     }
   }, [otpCooldown, otpTarget, getErrorMessage, startOtpCooldown, t]);
 
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
   // FORGOT PASSWORD
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
 
   const handleForgotPassword = useCallback(
     async (e: React.FormEvent) => {
@@ -1378,9 +1491,9 @@ export const Auth = () => {
     [authState.isOnline, forgotEmail, t]
   );
 
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
   // RENDER
-  // ──────────────────────────────────────────────────────────────────────
+  // ──────────────────────────────────────────────────────────────────
 
   const isLoading = authState.phase === 'validating' || authState.phase === 'submitting';
 
@@ -1534,9 +1647,9 @@ export const Auth = () => {
 
             {/* ---------- EMAIL CONFIRMATION VIEW ---------- */}
             {view === 'confirm-email' && (
-              <div className="text-center space-y-4 py-4">
+              <div className="text-center space-y-4 py-6">
                 <CheckCircle2
-                  className="h-12 w-12 mx-auto"
+                  className="h-12 w-12 mx-auto animate-bounce"
                   style={{ color: C.success }}
                 />
                 <h2 className="text-lg font-bold" style={{ color: C.text }}>
@@ -1551,22 +1664,60 @@ export const Auth = () => {
                 <p className="text-xs" style={{ color: C.textMuted }}>
                   {t.confirmEmailAction}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setView('signin');
-                    dispatch({ type: 'CLEAR_ERROR' });
-                  }}
-                  className="text-sm font-medium flex items-center gap-1 mx-auto transition-opacity hover:opacity-80"
-                  style={{
-                    color: C.blue,
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <ArrowLeft className="h-3 w-3" /> {t.backToSignIn}
-                </button>
+
+                {/* Resend email & back to signin options */}
+                <div className="pt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await supabase.auth.resend({
+                          type: 'signup',
+                          email: signUpEmail,
+                          options: {
+                            emailRedirectTo: `${window.location.origin}/auth`,
+                          },
+                        });
+                        toast({
+                          title: '✓',
+                          description: 'Confirmation email resent',
+                        });
+                      } catch (err) {
+                        console.error('[Auth] Resend failed:', err);
+                        toast({
+                          title: 'Error',
+                          description: 'Failed to resend email',
+                        });
+                      }
+                    }}
+                    className="text-sm font-medium flex items-center gap-1 mx-auto transition-opacity hover:opacity-80"
+                    style={{
+                      color: C.blue,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {t.resendOtp}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setView('signin');
+                      dispatch({ type: 'CLEAR_ERROR' });
+                    }}
+                    className="text-sm font-medium flex items-center gap-1 mx-auto transition-opacity hover:opacity-80"
+                    style={{
+                      color: C.textBody,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <ArrowLeft className="h-3 w-3" /> {t.backToSignIn}
+                  </button>
+                </div>
               </div>
             )}
 
