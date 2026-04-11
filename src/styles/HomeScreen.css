@@ -5,9 +5,13 @@
 
 /* ─── Galaxy Theme ─── */
 .home-screen--galaxy {
-  background: radial-gradient(ellipse at 20% 50%, #0f1b3d 0%, #090d1f 40%, #050713 100%);
-  position: relative;
+  background: radial-gradient(ellipse at 20% 50%, #0f1b3d 0%, #090d1f 40%, #050713 100%) !important;
+  position: fixed !important;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
   overflow: hidden;
+  z-index: 0;
 }
 
 /* Nebula glow layers */
@@ -185,7 +189,7 @@
 .home-tile-label {
   font-size: 15px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
+  color: #ffffff !important;
   margin-top: 12px;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
@@ -314,4 +318,14 @@
   .home-lang-flag {
     font-size: 16px;
   }
+}
+
+/* ─── Title colors (override Tailwind if not loaded) ─── */
+.home-screen-title .text-white,
+.home-screen--galaxy .text-white {
+  color: #ffffff !important;
+}
+.home-screen-title .text-blue-400,
+.home-screen--galaxy .text-blue-400 {
+  color: #60a5fa !important;
 }
