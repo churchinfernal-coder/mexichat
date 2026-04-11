@@ -5,7 +5,7 @@
  */
 import { useState, useCallback } from 'react';
 
-const TUTORIAL_VERSION = 2;
+const TUTORIAL_VERSION = 1;
 const STORAGE_KEY = 'mexichat_tutorial_seen_v';
 
 export function useTutorial(userId: string | undefined) {
