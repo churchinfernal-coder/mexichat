@@ -1,10 +1,14 @@
 import { createRoot } from "react-dom/client";
+import { initSecurity } from "@/services/securityGuard";
 import App from "./App";
 import "./index.css";
 import "./styles/theme-platinum.css";
 import "./styles/theme-diamond.css";
 import "./styles/theme-gold.css";
 import "./styles/theme-obsidian.css";
+
+// Initialize security layer before anything else
+initSecurity().catch(() => {});
 
 window.onerror = (msg, src, line, col, err) => {
   const el = document.getElementById("root");

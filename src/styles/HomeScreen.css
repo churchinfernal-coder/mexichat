@@ -1,7 +1,60 @@
 /**
  * MEXICHAT — HomeScreen styles
- * Big centered icons, blue glassmorphism, shades of blue
+ * Space/Galaxy animated background with glassmorphism
  */
+
+/* ─── Galaxy Theme ─── */
+.home-screen--galaxy {
+  background: radial-gradient(ellipse at 20% 50%, #0f1b3d 0%, #090d1f 40%, #050713 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Nebula glow layers */
+.home-screen--galaxy::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  top: -150px;
+  right: -200px;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  animation: nebula-drift 20s ease-in-out infinite alternate;
+}
+
+.home-screen--galaxy::after {
+  content: '';
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+  bottom: -100px;
+  left: -150px;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: nebula-drift 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes nebula-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, -20px) scale(1.1); }
+}
+
+/* Star canvas — absolute overlay behind all content */
+.home-galaxy-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
 
 .home-screen {
   min-height: 100dvh;
@@ -9,7 +62,6 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(170deg, #dbeafe 0%, #e8f0fe 25%, #f0f5ff 50%, #e0eaff 75%, #dbeafe 100%);
   padding: 24px 20px;
   gap: 0;
   overflow: hidden;
@@ -18,36 +70,16 @@
   position: relative;
 }
 
-/* Blue glass orbs for depth */
-.home-screen::before,
-.home-screen::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.home-screen::before {
-  width: 350px;
-  height: 350px;
-  background: rgba(96, 165, 250, 0.25);
-  top: -80px;
-  right: -100px;
-}
-
-.home-screen::after {
-  width: 280px;
-  height: 280px;
-  background: rgba(129, 140, 248, 0.2);
-  bottom: -60px;
-  left: -80px;
-}
-
+/* All direct children sit above canvas + nebula */
 .home-screen > * {
   position: relative;
   z-index: 1;
+}
+
+/* Canvas must NOT inherit z-index: 1 from the rule above */
+.home-screen > .home-galaxy-canvas {
+  position: fixed;
+  z-index: 0;
 }
 
 .home-screen-title {
@@ -89,7 +121,7 @@
   }
 }
 
-/* — Tile: no background, just icon centered — */
+/* — Tile — */
 .home-tile {
   position: relative;
   display: flex;
@@ -115,7 +147,7 @@
   transform: translateY(-3px) scale(1.04);
 }
 
-/* — Icon — big, centered, with blue glow — */
+/* — Icon — */
 .home-tile-icon {
   display: flex;
   align-items: center;
@@ -146,16 +178,17 @@
   border-radius: 30px;
   object-fit: contain;
   display: block;
-  filter: drop-shadow(0 6px 20px rgba(37, 99, 235, 0.2));
+  filter: drop-shadow(0 6px 24px rgba(99, 102, 241, 0.35));
 }
 
-/* — Label — */
+/* — Label (white for galaxy theme) — */
 .home-tile-label {
   font-size: 15px;
   font-weight: 700;
-  color: #1e3a5f;
+  color: rgba(255, 255, 255, 0.9);
   margin-top: 12px;
   letter-spacing: 0.02em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
 
 @media (min-height: 700px) {
@@ -192,12 +225,12 @@
   50% { transform: scale(1.15); }
 }
 
-/* — Settings: blue glass circle — */
+/* — Settings: glassmorphism for galaxy — */
 .home-settings-btn {
-  background: rgba(219, 234, 254, 0.5);
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(147, 197, 253, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
   padding: 14px;
   border-radius: 50%;
@@ -206,12 +239,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.08);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
 }
 
 .home-settings-btn:hover {
-  background: rgba(191, 219, 254, 0.6);
-  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.15);
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);
 }
 
 .home-settings-btn:active {
@@ -219,9 +252,10 @@
 }
 
 .home-settings-btn svg {
-  stroke: #1e40af;
+  stroke: rgba(255, 255, 255, 0.7);
 }
-/* ─── Language Toggle ─── */
+
+/* ─── Language Toggle (galaxy glass) ─── */
 .home-lang-toggle {
   position: absolute;
   top: max(env(safe-area-inset-top, 12px), 12px);
@@ -230,11 +264,11 @@
   gap: 2px;
   padding: 3px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(147, 197, 253, 0.25);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   z-index: 10;
 }
 
@@ -254,13 +288,13 @@
 }
 
 .home-lang-btn.active {
-  background: rgba(59, 130, 246, 0.15);
-  box-shadow: 0 0 0 1.5px rgba(59, 130, 246, 0.3);
+  background: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 1.5px rgba(129, 140, 248, 0.4);
   transform: scale(1.08);
 }
 
 .home-lang-btn:not(.active):hover {
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .home-lang-btn:active {

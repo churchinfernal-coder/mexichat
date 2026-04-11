@@ -54,7 +54,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import ConfirmDialog from '@/components/chat/ConfirmDialog';
 import ReportDialog from '@/components/chat/ReportDialog';
 import ForwardModal from '@/components/chat/ForwardModal';
-
+import NewChatModal from '@/components/messaging/NewChatModal';
 // ──────────────────────────────
 // COMPONENTS — v8 new
 // ──────────────────────────────
@@ -102,6 +102,8 @@ import { usePrivacySettings } from '@/hooks/usePrivacySettings';
 import { useChatLock } from '@/hooks/useChatLock';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useChatExport } from '@/hooks/useChatExport';
+import AppTutorial from '@/components/tutorial/AppTutorial';
+import { useTutorial } from '@/hooks/useTutorial';
 import { useThreadReplies } from '@/hooks/useThreadReplies';
 import { useChatWallpaper } from '@/hooks/useChatWallpaper';
 import { useReminders } from '@/hooks/useReminders';
@@ -598,6 +600,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                 style={{ padding: '10px', background: MC.blue, border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                 {saving ? 'Guardando...' : 'Guardar Cambios'}
               </button>
+              <button onClick={() => { triggerTutorial(); onClose(); }}
+                style={{ padding: '10px', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '8px', color: '#3b82f6', fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Globe size={16} /> Ver Tutorial
+              </button>
               <button onClick={handleSignOut}
                 style={{ padding: '10px', background: 'transparent', border: `1px solid ${MC.danger}`, borderRadius: '8px', color: MC.danger, fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <LogOut size={16} /> Cerrar sesion
@@ -1007,6 +1013,7 @@ const Mensajes: React.FC = () => {
   const chatLock = useChatLock();
   const notificationPrefs = useNotificationPreferences(myUserId);
   const chatExport = useChatExport();
+  const { shouldShow: showTutorial, dismiss: dismissTutorial, trigger: triggerTutorial } = useTutorial(myUserId);
   const threadReplies = useThreadReplies(myUserId);
   const chatWallpaper = useChatWallpaper();
   const reminders = useReminders(myUserId);
@@ -1842,6 +1849,10 @@ const Mensajes: React.FC = () => {
           blockedIds={blockedIds}
           setBlockedIds={setBlockedIds}
         />
+
+      {/* Tutorial overlay — triggered from settings */}
+      {showTutorial && <AppTutorial onComplete={dismissTutorial} />}
+
       )}
 
       {showGroupInviteModal && activeGroupId && activeGroupInfo && (
@@ -1869,41 +1880,16 @@ const Mensajes: React.FC = () => {
         onLoadMedia={sharedMedia.loadMedia}
         onClose={() => { setShowSharedMedia(false); sharedMedia.clear(); }}
       />
-
-      {/* ── New Chat Modal ── */}
-      {showNewChat && (
-        <div style={{ position: 'fixed', inset: 0, background: MC.overlay, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ background: MC.sidebar, borderRadius: '16px', width: '100%', maxWidth: '420px', maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: `1px solid ${MC.border}`, boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
-            <div style={{ padding: '16px', borderBottom: `1px solid ${MC.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontWeight: 700, fontSize: '16px', color: MC.text }}>Nuevo Chat</span>
-              <button onClick={() => { setShowNewChat(false); search.clear(); }} style={{ background: 'none', border: 'none', color: MC.textMuted, cursor: 'pointer', fontSize: '18px' }}>{'\u2715'}</button>
-            </div>
-            <div style={{ padding: '12px 16px' }}>
-              <input type="text" placeholder="Buscar por @usuario, nombre o telefono..." value={search.query} onChange={(e) => search.setQuery(e.target.value)} autoFocus
-                maxLength={MAX_SEARCH_QUERY_LENGTH}
-                style={{ width: '100%', padding: '10px 14px', background: MC.inputBg, border: `1px solid ${MC.border}`, borderRadius: '8px', color: MC.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
-              {search.isSearching && <div style={{ textAlign: 'center', padding: '20px', color: MC.textMuted, fontSize: '14px' }}>Buscando...</div>}
-              {search.results.length === 0 && search.query.length >= 2 && !search.isSearching && <div style={{ textAlign: 'center', padding: '20px', color: MC.textMuted, fontSize: '14px' }}>No se encontraron usuarios</div>}
-              {search.results.map((p: any) => (
-                <div key={p.user_id} onClick={() => handleStartConversation(p.user_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = MC.sidebarHover)} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: MC.sidebarActive, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, overflow: 'hidden', flexShrink: 0, color: MC.blue }}>
-                    {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : str(p.full_name, '?').charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: '14px', color: MC.text }}>{str(p.full_name, 'Usuario')}</div>
-                    <div style={{ fontSize: '12px', color: MC.textMuted }}>{p.username ? `@${p.username}` : str(p.phone)}</div>
-                  </div>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: bool(p.is_online) ? MC.online : MC.offline }} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+{/* ── New Chat Modal ── (replace the old 30-line block with this) */}
+{showNewChat && myUserId && (
+  <NewChatModal
+    userId={myUserId}
+    search={search}
+    onStartConversation={handleStartConversation}
+    onClose={() => setShowNewChat(false)}
+    MC={MC}
+  />
+)}
 
       {/* ── New Group Modal ── */}
       {showNewGroup && (
