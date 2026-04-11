@@ -1,11 +1,11 @@
 /**
- * MexiChat â€” Mercado Pago client library (production)
+ * MexiChat — Mercado Pago client library (production)
  * Supports: Mercado Pago Checkout + OXXO cash payments
  */
 
 import { supabase } from '@/integrations/supabase/client';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://cchakgecusfybcokbmau.supabase.co';
 
 // ----------
 
