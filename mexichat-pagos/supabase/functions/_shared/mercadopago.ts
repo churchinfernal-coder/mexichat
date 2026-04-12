@@ -1,4 +1,4 @@
-﻿// ╔══════════════════════════════════════════════════════════════╗
+// ╔══════════════════════════════════════════════════════════════╗
 // ║  Mercado Pago API Client                                    ║
 // ║  OAuth, Preferences, Payments, Signature Verification       ║
 // ║  Timeouts, retries, structured errors                       ║

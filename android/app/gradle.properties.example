@@ -1,0 +1,17 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# android/app/gradle.properties.example
+# Copy to gradle.properties and configure (DO NOT commit gradle.properties)
+# ═══════════════════════════════════════════════════════════════════════════════
+org.gradle.jvmargs=-Xmx4096m
+android.useAndroidX=true
+android.enableJetifier=true
+
+MEXICHAT_RELEASE_STORE_FILE=mexichat-release.keystore
+MEXICHAT_RELEASE_KEY_ALIAS=mexichat
+
+# PASSWORDS: Set via environment variables before building
+# PowerShell:
+#   $env:MEXICHAT_KEYSTORE_PASSWORD = "your-store-password"
+#   $env:MEXICHAT_KEY_PASSWORD = "your-key-password"
+#
+# Or use GitHub Actions secrets / CI environment variables

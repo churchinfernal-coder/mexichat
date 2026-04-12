@@ -1,4 +1,4 @@
-﻿// ╔══════════════════════════════════════════════════════════════╗
+// ╔══════════════════════════════════════════════════════════════╗
 // ║  GET /functions/v1/oauth-callback?code=xxx&state=xxx        ║
 // ║  Mercado Pago OAuth callback. Exchanges code for tokens.    ║
 // ║  Redirects to frontend.                                     ║

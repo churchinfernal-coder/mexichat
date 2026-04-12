@@ -1,4 +1,4 @@
-﻿// ╔══════════════════════════════════════════════════════════════╗
+// ╔══════════════════════════════════════════════════════════════╗
 // ║  Supabase Client Factory                                    ║
 // ║  - Admin client (service_role): bypasses RLS for webhooks   ║
 // ║  - User client: respects RLS policies                       ║

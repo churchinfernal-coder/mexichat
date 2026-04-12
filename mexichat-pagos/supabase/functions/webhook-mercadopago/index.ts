@@ -1,4 +1,4 @@
-﻿// ╔══════════════════════════════════════════════════════════════╗
+// ╔══════════════════════════════════════════════════════════════╗
 // ║  POST /functions/v1/webhook-mercadopago                     ║
 // ║  Mercado Pago webhook handler                               ║
 // ║  - Signature verification (HMAC-SHA256)                     ║

@@ -1,4 +1,4 @@
-﻿// ╔══════════════════════════════════════════════════════════════╗
+// ╔══════════════════════════════════════════════════════════════╗
 // ║  POST /functions/v1/payment-send                            ║
 // ║  Creates a transaction + Mercado Pago checkout preference   ║
 // ║  Rate-limited, idempotent, fraud-checked                    ║

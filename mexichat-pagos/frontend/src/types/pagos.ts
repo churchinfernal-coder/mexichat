@@ -1,4 +1,4 @@
-﻿export type TxStatus = "pending" | "approved" | "rejected" | "cancelled" | "refunded" | "in_process" | "charged_back";
+export type TxStatus = "pending" | "approved" | "rejected" | "cancelled" | "refunded" | "in_process" | "charged_back";
 
 export interface Transaction {
   id: string;

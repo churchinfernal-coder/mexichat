@@ -37,7 +37,7 @@ android/local.properties
 *.keystore
 *.jks
 
-# ─── Security: Never commit secrets ───
+# â”€â”€â”€ Security: Never commit secrets â”€â”€â”€
 .env
 .env.local
 .env.production
@@ -49,21 +49,37 @@ android/local.properties
 *.jks
 *.keystore
 
-# ─── Build artifacts ───
+# â”€â”€â”€ Build artifacts â”€â”€â”€
 dist/
 build/
 .cache/
 
-# ─── IDE ───
+# â”€â”€â”€ IDE â”€â”€â”€
 .idea/
 .vscode/
 *.swp
 *.swo
 
-# ─── OS ───
+# â”€â”€â”€ OS â”€â”€â”€
 .DS_Store
 Thumbs.db
 
-# ─── Logs ───
+# â”€â”€â”€ Logs â”€â”€â”€
 *.log
 npm-debug.log*
+
+# ─── Security: Android app-level secrets ───
+android/app/gradle.properties
+android/app/local.properties
+android/**/google-services.json
+
+# ─── Security: iOS signing ───
+ios/App/App/GoogleService-Info.plist
+*.mobileprovision
+*.p8
+
+# ─── Security: Additional secrets ───
+*.secrets
+.secrets/
+secrets.json
+credentials.json

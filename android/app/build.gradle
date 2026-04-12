@@ -27,10 +27,10 @@ android {
             def keystoreFile = file(keystorePath)
 
             if (!keystoreFile.exists()) {
-                logger.error("❌ KEYSTORE NOT FOUND at: ${keystoreFile.absolutePath}")
+                logger.error("âŒ KEYSTORE NOT FOUND at: ${keystoreFile.absolutePath}")
                 logger.error("Expected file: ${keystorePath}")
             } else {
-                logger.info("✅ Keystore found at: ${keystoreFile.absolutePath}")
+                logger.info("âœ… Keystore found at: ${keystoreFile.absolutePath}")
                 storeFile keystoreFile
                 storePassword System.getenv("KEYSTORE_PASSWORD") ?: "MexiChat2026Rel"
                 keyAlias System.getenv("KEY_ALIAS") ?: "mexichat"

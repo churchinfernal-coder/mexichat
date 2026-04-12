@@ -20,6 +20,7 @@ import BiometricLockScreen from '@/components/BiometricLockScreen';
 import { recordActivity } from '@/services/biometric';
 
 const Pagos = React.lazy(() => import('./pages/Pagos'));
+const OAuthConnect = React.lazy(() => import('./pages/OAuthConnect'));
 // Global call system
 import GlobalIncomingCallOverlay from '@/components/GlobalIncomingCallOverlay';
 import GlobalActiveCallOverlay from '@/components/GlobalActiveCallOverlay';
@@ -103,8 +104,11 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute><HomeScreen /></ProtectedRoute>
         } />
 
-        {/* Pagos -- wildcard so /pagos/oauth-connect and all sub-routes render inside Pagos */}
-        <Route path="pagos/*" element={
+        {/* Pagos — OAuth connect must come BEFORE the pagos catch-all */}
+        <Route path="pagos/oauth-connect" element={
+          <ProtectedRoute><OAuthConnect /></ProtectedRoute>
+        } />
+        <Route path="pagos" element={
           <ProtectedRoute><Pagos /></ProtectedRoute>
         } />
 
