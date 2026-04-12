@@ -3,6 +3,9 @@
  * Proprietary and confidential. Unauthorized copying, modification,
  * distribution, or use of this software is strictly prohibited.
  * See LICENSE file for details.
+ *
+ * ChatWindow v9.0 — Carrier-grade private DM chat
+ * REAL camera: getUserMedia live viewfinder for photo + video on all platforms.
  */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
@@ -44,6 +47,7 @@ import { useAudioRecorder } from '@/hooks/useAudioRecorder';
 import { useBulkSelect } from '@/hooks/useBulkSelect';
 import { useDisappearingMessages, type DisappearTimer } from '@/hooks/useDisappearingMessages';
 import { formatAudioDuration } from '@/utils/audioEncoder';
+import InlineCameraCapture from '@/components/chat/InlineCameraCapture';
 
 // v8 components
 import ReactionPicker from '@/components/chat/ReactionPicker';
@@ -315,18 +319,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [liveDurationMinutes, setLiveDurationMinutes] = useState(15);
   const [editText, setEditText] = useState('');
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const lastSendRef = useRef(0);
   const notifiedMessageIds = useRef(new Set<string>());
   const initialLoadComplete = useRef(false);
 
   useEffect(() => {
-    if (draft && !inputText) setInputText(draft);
+    if (draft) setInputText(draft);
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -394,21 +398,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   // ═══════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
-    const handleClick = () => { setContextMenu(null); setShowReactionPicker(null); };
-    if (contextMenu || showReactionPicker) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    const dismissMenus = () => { setContextMenu(null); setShowReactionPicker(null); };
+    if (contextMenu || showReactionPicker) document.addEventListener('mousedown', dismissMenus);
+    return () => document.removeEventListener('mousedown', dismissMenus);
   }, [contextMenu, showReactionPicker]);
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => { if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false); };
-    if (showSettings) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    const dismissSettings = (e: MouseEvent) => { if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) setShowSettings(false); };
+    if (showSettings) document.addEventListener('mousedown', dismissSettings);
+    return () => document.removeEventListener('mousedown', dismissSettings);
   }, [showSettings]);
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => { const panel = document.querySelector('.chat-action-panel'); if (panel && !panel.contains(e.target as Node)) setShowActions(false); };
-    if (showActions) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    const dismissActions = (e: MouseEvent) => { const panel = document.querySelector('.chat-action-panel'); if (panel && !panel.contains(e.target as Node)) setShowActions(false); };
+    if (showActions) document.addEventListener('mousedown', dismissActions);
+    return () => document.removeEventListener('mousedown', dismissActions);
   }, [showActions]);
 
   useEffect(() => { if (replyingTo) inputRef.current?.focus(); }, [replyingTo]);
@@ -421,49 +425,65 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [visibleMessages]);
 
   // ═══════════════════════════════════════════════════════════════════════
-  // AUDIO RECORDING + FILE UPLOAD
+  // AUDIO RECORDING + FILE UPLOAD + CAMERA CAPTURE
   // ═══════════════════════════════════════════════════════════════════════
 
   const handleAudioSend = useCallback(async () => {
-    const result = await audioRecorder.stopRecording();
-    if (!result) return;
-    setUploading(true); sendUploading();
-    const ext = result.file.name.split('.').pop() || 'webm';
-    const fileName = `${currentUserId}/${conversationId}/${Date.now()}_voice.${ext}`;
-    const { error } = await supabase.storage.from('chat-media').upload(fileName, result.file, { cacheControl: '3600', upsert: false });
-    if (error) { toast.error('Error al subir audio'); setUploading(false); return; }
-    const { data: signedData } = await supabase.storage.from('chat-media').createSignedUrl(fileName, CHAT_CONFIG.SIGNED_URL_EXPIRY);
-    if (signedData?.signedUrl) { onSendMessage('', signedData.signedUrl, 'audio'); toast.success(`Audio ${formatAudioDuration(result.duration)} enviado`); }
-    setUploading(false);
-  }, [audioRecorder, currentUserId, conversationId, onSendMessage]);
+    try {
+      const result = await audioRecorder.stopRecording();
+      if (!result) return;
+      setUploading(true); sendUploading();
+      const ext = result.file.name.split('.').pop() || 'webm';
+      const fileName = `${currentUserId}/${conversationId}/${Date.now()}_voice.${ext}`;
+      const { error } = await supabase.storage.from('chat-media').upload(fileName, result.file, { cacheControl: '3600', upsert: false });
+      if (error) { toast.error('Error al subir audio'); setUploading(false); return; }
+      const { data: signedData } = await supabase.storage.from('chat-media').createSignedUrl(fileName, CHAT_CONFIG.SIGNED_URL_EXPIRY);
+      if (signedData?.signedUrl) { onSendMessage('', signedData.signedUrl, 'audio'); toast.success(`Audio ${formatAudioDuration(result.duration)} enviado`); }
+      setUploading(false);
+    } catch (err) {
+      console.error('[ChatWindow] audio send error:', err);
+      toast.error('Error al enviar audio');
+      setUploading(false);
+    }
+  }, [audioRecorder, currentUserId, conversationId, onSendMessage, sendUploading]);
 
   const uploadFile = useCallback(async (file: File): Promise<{ url: string; type: string } | null> => {
     const isImage = file.type.startsWith('image/');
     const isVideo = file.type.startsWith('video/');
     const isAudio = file.type.startsWith('audio/');
-    if (file.size > CHAT_CONFIG.MAX_FILE_SIZE) return null;
+    if (file.size > CHAT_CONFIG.MAX_FILE_SIZE) { toast.error(`Archivo muy grande (max ${Math.round(CHAT_CONFIG.MAX_FILE_SIZE / 1024 / 1024)}MB)`); return null; }
     let fileToUpload = file;
     if (isImage) { try { fileToUpload = await compressImage(file); } catch { fileToUpload = file; } }
     const ext = fileToUpload.name.split('.').pop() || 'bin';
     const fileName = `${currentUserId}/${conversationId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage.from('chat-media').upload(fileName, fileToUpload, { cacheControl: '3600', upsert: false });
-    if (error) { console.error('Upload error:', error); return null; }
+    if (error) { console.error('[ChatWindow] upload error:', error); return null; }
     const { data: signedData } = await supabase.storage.from('chat-media').createSignedUrl(fileName, CHAT_CONFIG.SIGNED_URL_EXPIRY);
     if (!signedData?.signedUrl) return null;
     return { url: signedData.signedUrl, type: isImage ? 'image' : isVideo ? 'video' : isAudio ? 'audio' : 'document' };
   }, [currentUserId, conversationId]);
 
-  const handleCameraCapture = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    e.target.value = '';
-    if (files.length === 0) return;
-    setUploading(true); sendUploading();
-    const result = await uploadFile(files[0]);
-    if (result) { onSendMessage('', result.url, result.type, replyingTo?.id); toast.success('Foto enviada'); }
-    else toast.error('Error al enviar foto');
-    setUploading(false);
-    if (replyingTo) setReplyingTo(null);
-  }, [uploadFile, onSendMessage, replyingTo, sendUploading]);
+  /** Receives File from InlineCameraCapture (photo or video) */
+  const handleCameraFile = useCallback(async (file: File, type: 'image' | 'video') => {
+    setShowCameraCapture(false);
+    if (uploading) return;
+    try {
+      setUploading(true); sendUploading();
+      const result = await uploadFile(file);
+      if (result) {
+        onSendMessage('', result.url, result.type, replyingTo?.id);
+        toast.success(type === 'video' ? 'Video enviado' : 'Foto enviada');
+      } else {
+        toast.error('Error al enviar');
+      }
+      setUploading(false);
+      if (replyingTo) setReplyingTo(null);
+    } catch (err) {
+      console.error('[ChatWindow] camera file error:', err);
+      toast.error('Error al enviar');
+      setUploading(false);
+    }
+  }, [uploadFile, onSendMessage, replyingTo, sendUploading, uploading]);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -474,7 +494,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     for (const file of files) {
       const allowedPrefixes = ['image/', 'video/', 'audio/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats', 'application/vnd.ms-', 'text/', 'application/zip', 'application/x-rar'];
       if (!allowedPrefixes.some(t => file.type.startsWith(t)) && !file.name.match(/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|zip|rar|csv)$/i)) { toast.error(`${file.name}: Tipo no soportado`); continue; }
-      if (file.size > CHAT_CONFIG.MAX_FILE_SIZE) { toast.error(`${file.name}: Max 10MB`); continue; }
+      if (file.size > CHAT_CONFIG.MAX_FILE_SIZE) { toast.error(`${file.name}: Max ${Math.round(CHAT_CONFIG.MAX_FILE_SIZE / 1024 / 1024)}MB`); continue; }
       validFiles.push(file);
     }
     if (validFiles.length === 0) return;
@@ -483,9 +503,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     let successCount = 0; let failCount = 0;
     for (let i = 0; i < validFiles.length; i++) {
       setUploadProgress({ current: i + 1, total: validFiles.length });
-      const result = await uploadFile(validFiles[i]);
-      if (result) { onSendMessage('', result.url, result.type, replyingTo?.id); successCount++; }
-      else failCount++;
+      try {
+        const result = await uploadFile(validFiles[i]);
+        if (result) { onSendMessage('', result.url, result.type, replyingTo?.id); successCount++; }
+        else failCount++;
+      } catch { failCount++; }
       if (i < validFiles.length - 1) await new Promise(r => setTimeout(r, 200));
     }
     setUploading(false); setUploadProgress({ current: 0, total: 0 });
@@ -500,14 +522,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleSend = useCallback(() => {
     if (editingMessage && onSaveEdit) {
-      onSaveEdit(editText);
+      const trimmed = editText.trim();
+      if (!trimmed) { toast.error('Mensaje vacio'); return; }
+      if (trimmed.length > CHAT_CONFIG.MAX_MESSAGE_LENGTH) { toast.error(`Maximo ${CHAT_CONFIG.MAX_MESSAGE_LENGTH} caracteres`); return; }
+      onSaveEdit(trimmed);
       return;
     }
     const now = Date.now();
-    if (now - lastSendRef.current < CHAT_CONFIG.RATE_LIMIT_MS) return;
+    if (now - lastSendRef.current < CHAT_CONFIG.RATE_LIMIT_MS) {
+      toast.error('Espera un momento antes de enviar otro mensaje');
+      return;
+    }
     lastSendRef.current = now;
     const text = inputText.trim();
     if (!text || isBlocked || uploading) return;
+    if (text.length > CHAT_CONFIG.MAX_MESSAGE_LENGTH) { toast.error(`Maximo ${CHAT_CONFIG.MAX_MESSAGE_LENGTH} caracteres`); return; }
     onSendMessage(text, undefined, undefined, replyingTo?.id || undefined);
     setInputText(''); setReplyingTo(null); sendStopTyping(); setShowEmojiPicker(false);
     inputRef.current?.focus();
@@ -530,7 +559,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // ═══════════════════════════════════════════════════════════════════════
   // CONTEXT MENU HANDLERS
-  // ════════════════════��══════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
 
   const handleContextMenu = useCallback((e: React.MouseEvent, msgId: string) => {
     e.preventDefault();
@@ -580,6 +609,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   return (
     <div className="mensajes-main" style={{ position: 'relative', ...(wallpaper ? { background: wallpaper } : {}) }}>
 
+      {/* ────────── Inline Camera Capture (getUserMedia) ────────── */}
+      <InlineCameraCapture
+        open={showCameraCapture}
+        onCapture={handleCameraFile}
+        onClose={() => setShowCameraCapture(false)}
+      />
+
       {/* ────────── Active Call Overlay ────────── */}
       {activeCall?.active && activeCall.peerId === otherUser.id && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 50, background: activeCall.type === 'video' ? '#000' : 'linear-gradient(135deg, #0a0a0f 0%, #12071a 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -595,7 +631,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           )}
           {activeCall.type === 'audio' && (
             <div style={{ textAlign: 'center', zIndex: 2 }}>
-              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(29,78,216,0.1)', border: '1px solid rgba(29,78,216,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '36px', fontWeight: 700, overflow: 'hidden', color: 'var(--mc-blue)' }}>
+              <div style={{ width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(29,78,216,0.1)', border: '1px solid rgba(29,78,216,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', overflow: 'hidden', margin: '0 auto 16px' }}>
                 {otherUser.avatarUrl ? <img src={otherUser.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : getInitials(otherUser.fullName)}
               </div>
               <div style={{ fontSize: '20px', fontWeight: 700, color: 'white', marginBottom: '8px' }}>{otherUser.fullName}</div>
@@ -606,7 +642,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </div>
             </div>
           )}
-          <div style={{ position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 3, background: 'rgba(0,0,0,0.4)', borderRadius: '40px', padding: '10px 20px' }}>
+          <div style={{ position: 'absolute', bottom: '30px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '16px', zIndex: 3, background: 'rgba(0,0,0,0.4)', borderRadius: '40px', padding: '12px 24px' }}>
             <button onClick={toggleMute} title={activeCall.isMuted ? 'Activar mic' : 'Silenciar'} style={{ width: '52px', height: '52px', borderRadius: '50%', background: activeCall.isMuted ? '#ef4444' : 'rgba(255,255,255,0.1)', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {activeCall.isMuted ? <MicOff size={22} /> : <Mic size={22} />}
             </button>
@@ -615,7 +651,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 {activeCall.isVideoOff ? <VideoOff size={22} /> : <Video size={22} />}
               </button>
             )}
-            <button onClick={endActiveCall} title="Colgar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#ef4444', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 10px rgba(239,68,68,0.4)' }}>
+            <button onClick={endActiveCall} title="Colgar" style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#ef4444', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PhoneOff size={22} />
             </button>
           </div>
@@ -728,39 +764,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     onMouseEnter={() => setHoveredMsgId(msg.id)}
                     onMouseLeave={() => setHoveredMsgId(null)}
                     onClick={bulkSelect.isSelecting ? () => bulkSelect.toggleSelect(msg.id) : undefined}
-                    style={{ position: 'relative', cursor: bulkSelect.isSelecting ? 'pointer' : undefined, outline: isSelected ? '2px solid var(--mc-blue)' : undefined, borderRadius: '2px', transition: 'background 0.3s' }}
+                    style={{ position: 'relative', cursor: bulkSelect.isSelecting ? 'pointer' : undefined, outline: isSelected ? '2px solid var(--mc-blue)' : undefined, borderRadius: '2px', transition: 'outline 0.15s' }}
                   >
-                    {/* Bulk select checkbox */}
                     {bulkSelect.isSelecting && (
-                      <div style={{ position: 'absolute', top: '4px', [isSent ? 'left' : 'right']: '-28px', width: '20px', height: '20px', borderRadius: '2px', border: `2px solid ${isSelected ? 'var(--mc-blue)' : 'var(--mc-border)'}`, background: isSelected ? 'var(--mc-blue)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ position: 'absolute', top: '4px', [isSent ? 'left' : 'right']: '-28px', width: '20px', height: '20px', borderRadius: '2px', border: `2px solid ${isSelected ? 'var(--mc-blue)' : 'var(--mc-border)'}`, background: isSelected ? 'var(--mc-blue)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
                         {isSelected && <Check size={12} style={{ color: '#0a0a0f' }} />}
                       </div>
                     )}
 
-                    {/* Forwarded badge */}
                     {msg.isForwarded && (
                       <div style={{ fontSize: '11px', color: 'var(--mc-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', fontStyle: 'italic', paddingLeft: '4px' }}>
                         <CornerUpRight size={12} /> Reenviado
                       </div>
                     )}
 
-                    {/* Reply preview */}
                     {repliedMsg && (
                       <div
-                        style={{ background: isSent ? 'rgba(29,78,216,0.08)' : 'rgba(255,255,255,0.03)', borderLeft: '2px solid var(--mc-blue)', borderRadius: '0', padding: '6px 10px', marginBottom: '4px', fontSize: '12px', maxWidth: '100%', cursor: 'pointer' }}
+                        style={{ background: isSent ? 'rgba(29,78,216,0.08)' : 'rgba(255,255,255,0.03)', borderLeft: '2px solid var(--mc-blue)', borderRadius: '0', padding: '6px 10px', marginBottom: '4px', cursor: 'pointer', fontSize: '12px' }}
                         onClick={(e) => { e.stopPropagation(); const el = document.getElementById(`msg-${repliedMsg.id}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); el?.classList.add('highlight-flash'); setTimeout(() => el?.classList.remove('highlight-flash'), 1500); }}
                       >
                         <div style={{ fontWeight: 600, color: 'var(--mc-blue)', marginBottom: '2px' }}>{repliedMsg.senderId === currentUserId ? 'T\u00FA' : otherUser.fullName}</div>
-                        <div style={{ color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{repliedMsg.mediaUrl ? '\uD83D\uDCCE Archivo' : truncateText(repliedMsg.content, 60)}</div>
+                        <div style={{ color: 'var(--mc-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{repliedMsg.mediaUrl ? '\uD83D\uDCCE Archivo' : truncateText(repliedMsg.content, 80)}</div>
                       </div>
                     )}
 
-                    {/* Location: unencrypted renders directly */}
                     {(msg.mediaType === 'location' || (!msg.mediaType && isLocationJSON(msg.content))) && !msg.iv && (
                       <LocationMessage content={msg.content} isSent={isSent} />
                     )}
 
-                    {/* Media (image / video / audio / document) */}
                     {msg.mediaUrl && msg.mediaType !== 'location' && (
                       <div className="mensajes-msg-media">
                         {msg.mediaType === 'image' ? (
@@ -770,8 +801,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         ) : msg.mediaType === 'audio' ? (
                           <AudioSpeedPlayer src={msg.mediaUrl!} />
                         ) : msg.mediaType === 'document' ? (
-                          <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(99,102,241,0.08)', borderRadius: '10px', textDecoration: 'none', color: 'var(--mc-text)' }}>
-                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '14px', fontWeight: 700 }}>DOC</div>
+                          <a href={msg.mediaUrl!} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: 'rgba(99,102,241,0.06)', borderRadius: '10px', textDecoration: 'none', color: 'inherit' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                              <Download size={18} />
+                            </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Documento adjunto</div>
                               <div style={{ fontSize: '11px', color: 'var(--mc-text-muted)' }}>Toca para abrir</div>
@@ -781,7 +814,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                     )}
 
-                    {/* Text content: encrypted → DecryptedBubble, plain → inline */}
                     {msg.content && (msg.mediaType !== 'location' || msg.iv) && !((!msg.mediaType) && isLocationJSON(msg.content)) && (
                       msg.iv ? (
                         <DecryptedBubble msg={msg} currentUserId={currentUserId} otherUserId={otherUser.id} e2ee={e2ee} />
@@ -797,21 +829,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                               return (
                                 <div style={{ background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 16px', maxWidth: '280px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}><DollarSign size={18} /></div>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                                      <DollarSign size={18} />
+                                    </div>
                                     <div>
                                       <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>{isRequester ? 'Solicitaste pago' : (otherUserName || otherUser.fullName) + ' solicita'}</div>
                                       <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0 }).format(pr.amount)}</div>
                                     </div>
                                   </div>
                                   {pr.desc && <div style={{ fontSize: '13px', color: '#475569', padding: '8px 10px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px', marginBottom: '10px' }}>{pr.desc}</div>}
-                                  <div style={{ display: 'inline-flex', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, color: status === 'paid' ? '#22c55e' : status === 'declined' ? '#ef4444' : '#f59e0b', background: status === 'paid' ? 'rgba(34,197,94,0.08)' : status === 'declined' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)' }}>
+                                  <div style={{ display: 'inline-flex', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, color: status === 'paid' ? '#22c55e' : status === 'declined' ? '#ef4444' : '#f59e0b', background: status === 'paid' ? 'rgba(34,197,94,0.1)' : status === 'declined' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)' }}>
                                     {status === 'paid' ? 'Pagado' : status === 'declined' ? 'Rechazado' : status === 'cancelled' ? 'Cancelado' : 'Pendiente'}
                                   </div>
                                   {status === 'pending' && (
                                     <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                                      {isPayer && <button onClick={() => window.open('/pagos?pay=' + pr.id + '&amount=' + pr.amount + '&to=' + pr.requesterId, '_blank')} style={{ flex: 1, padding: '8px', background: '#22c55e', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>Pagar</button>}
-                                      {isPayer && payReq && <button onClick={() => payReq.declineRequest(pr.id)} style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid #fecaca', borderRadius: '8px', color: '#ef4444', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Rechazar</button>}
-                                      {isRequester && payReq && <button onClick={() => payReq.cancelRequest(pr.id)} style={{ flex: 1, padding: '8px', background: 'rgba(148,163,184,0.1)', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#64748b', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>}
+                                      {isPayer && <button onClick={() => window.open('/pagos?pay=' + pr.id + '&amount=' + pr.amount + '&to=' + pr.requesterId, '_blank')} style={{ flex: 1, padding: '8px', background: 'linear-gradient(135deg, #22c55e, #16a34a)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>Pagar</button>}
+                                      {isPayer && payReq && <button onClick={() => payReq.declineRequest(pr.id)} style={{ padding: '8px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', color: '#ef4444', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}>Rechazar</button>}
+                                      {isRequester && payReq && <button onClick={() => payReq.cancelRequest(pr.id)} style={{ flex: 1, padding: '8px', background: 'rgba(148,163,184,0.1)', border: '1px solid rgba(148,163,184,0.2)', borderRadius: '8px', color: '#64748b', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>Cancelar</button>}
                                     </div>
                                   )}
                                 </div>
@@ -823,17 +857,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       )
                     )}
 
-                    {/* Link Preview */}
                     {urlInContent && linkPreview && (
                       <LinkPreviewCard url={urlInContent} preview={linkPreview.previews.get(urlInContent) ?? null} onFetch={linkPreview.fetchPreview} />
                     )}
 
-                    {/* Reactions */}
                     {msgReactions.length > 0 && onToggleReaction && (
                       <ReactionBadge reactions={msgReactions} onToggle={(emoji) => onToggleReaction(msg.id, emoji)} />
                     )}
 
-                    {/* Meta: star, edited, timer, time, status */}
                     <div className="mensajes-msg-meta">
                       {isStarred && <Star size={10} style={{ color: '#fbbf24', fill: '#fbbf24', marginRight: '2px' }} />}
                       {msg.editedAt && <span style={{ fontSize: '10px', color: 'var(--mc-text-muted)', marginRight: '4px' }}>editado</span>}
@@ -850,9 +881,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       )}
                     </div>
 
-                    {/* Hover action buttons */}
                     {hoveredMsgId === msg.id && !bulkSelect.isSelecting && (
-                      <div className="mc-msg-hover-actions" style={{ position: 'absolute', top: '-32px', [isSent ? 'right' : 'left']: '0', display: 'flex', gap: '2px', background: 'var(--mc-sidebar, #fff)', borderRadius: '8px', padding: '2px 4px', border: '1px solid var(--mc-border)', zIndex: 50, boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                      <div className="mc-msg-hover-actions" style={{ position: 'absolute', top: '-32px', [isSent ? 'right' : 'left']: '0', display: 'flex', gap: '2px', background: 'var(--mc-sidebar)', borderRadius: '8px', border: '1px solid var(--mc-border)', padding: '2px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
                         <button onClick={() => handleReply(msg.id)} title="Responder" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Reply size={14} /></button>
                         <button onClick={() => handleForward(msg.id)} title="Reenviar" style={{ background: 'none', border: 'none', color: 'var(--mc-text-muted)', cursor: 'pointer', padding: '6px', display: 'flex' }}><Forward size={14} /></button>
                         {onToggleReaction && (
@@ -873,12 +903,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                       </div>
                     )}
 
-                    {/* Translate */}
                     {msg.content && !isSent && (
-                      <TranslateButton msgId={msg.id} content={msg.content} translation={autoTranslate.getTranslation(msg.id)} isTranslating={autoTranslate.isTranslating(msg.id)} shouldOffer={autoTranslate.shouldOfferTranslation(msg.content)} onTranslate={autoTranslate.translateMessage} onRemove={autoTranslate.removeTranslation} />
+                      <TranslateButton msgId={msg.id} content={msg.content} translation={autoTranslate.getTranslation(msg.id)} isTranslating={autoTranslate.isTranslating(msg.id)} shouldOffer={autoTranslate.shouldOfferTranslation(msg.content)} onTranslate={() => autoTranslate.translateMessage(msg.id, msg.content)} onRemove={() => autoTranslate.removeTranslation(msg.id)} />
                     )}
 
-                    {/* Reaction Picker popup */}
                     {showReactionPicker === msg.id && onToggleReaction && (
                       <div style={{ position: 'absolute', top: '-48px', [isSent ? 'right' : 'left']: '0', zIndex: 20 }} onMouseDown={(e) => e.stopPropagation()}>
                         <ReactionPicker onSelect={(emoji) => { onToggleReaction(msg.id, emoji); setShowReactionPicker(null); }} position="above" />
@@ -896,7 +924,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* ────────── Context Menu ────────── */}
       {contextMenu && (
-        <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, background: 'var(--mc-sidebar)', border: '1px solid var(--mc-border)', borderRadius: '0', padding: '4px', zIndex: 60, minWidth: '180px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
+        <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, background: 'var(--mc-sidebar)', border: '1px solid var(--mc-border)', borderRadius: '0', padding: '4px', zIndex: 100, minWidth: '160px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
           <button className="mensajes-settings-item" onClick={() => handleReply(contextMenu.msgId)}><Reply size={16} /> Responder</button>
           <button className="mensajes-settings-item" onClick={() => handleForward(contextMenu.msgId)}><Forward size={16} /> Reenviar</button>
           {onToggleStar && (
@@ -909,7 +937,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <button className="mensajes-settings-item" onClick={() => { const msg = messageMap.get(contextMenu.msgId); if (msg && onStartEdit) onStartEdit(msg.id, msg.content); setContextMenu(null); }}><Edit3 size={16} /> Editar</button>
           )}
           {threadReplies && (
-            <button className="mensajes-settings-item" onClick={() => { const msg = messageMap.get(contextMenu.msgId); if (msg) threadReplies.openThread(msg.id, msg.content, msg.senderId === currentUserId ? currentUserName : otherUser.fullName, 'private_messages'); setContextMenu(null); }}><Reply size={16} /> Ver hilo</button>
+            <button className="mensajes-settings-item" onClick={() => { const msg = messageMap.get(contextMenu.msgId); if (msg) threadReplies.openThread(msg.id, msg.content, msg.senderId === currentUserId ? currentUserName : otherUser.fullName, 'private_messages'); setContextMenu(null); }}><Reply size={16} /> Hilo</button>
           )}
           {onDeleteMessage && (
             <button className="mensajes-settings-item" style={{ color: '#ef4444' }} onClick={() => handleDeleteMsg(contextMenu.msgId)}><Trash2 size={16} /> Eliminar</button>
@@ -934,7 +962,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       {uploading && (
         <div style={{ padding: '8px 20px', background: 'rgba(29,78,216,0.06)', borderTop: '1px solid rgba(29,78,216,0.1)', textAlign: 'center', color: 'var(--mc-blue)', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
           <div style={{ width: '16px', height: '16px', border: '2px solid var(--mc-blue)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-          Subiendo {uploadProgress.current}/{uploadProgress.total} archivos...
+          {uploadProgress.total > 0 ? `Subiendo ${uploadProgress.current}/${uploadProgress.total} archivos...` : 'Subiendo...'}
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
       )}
@@ -951,7 +979,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* ────────── Reply Bar ────────── */}
+      {/* ────────── Reply Bar ───────���── */}
       {replyingTo && !isBlocked && !editingMessage && (
         <div style={{ padding: '8px 20px', background: 'var(--mc-sidebar)', borderTop: '1px solid var(--mc-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '2px', height: '36px', background: 'var(--mc-blue)', flexShrink: 0 }} />
@@ -974,10 +1002,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
             {!editingMessage && (
               <>
-                <button className="mensajes-input-btn" title="Camara" onClick={() => cameraInputRef.current?.click()} disabled={uploading || audioRecorder.isRecording} style={uploading || audioRecorder.isRecording ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
+                <button className="mensajes-input-btn" title="Camara" onClick={() => setShowCameraCapture(true)} disabled={uploading || audioRecorder.isRecording} style={uploading || audioRecorder.isRecording ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
                   <Camera size={20} />
                 </button>
-                <input ref={cameraInputRef} type="file" accept="image/*" capture="user" style={{ display: 'none' }} onChange={handleCameraCapture} />
                 <button className="mensajes-input-btn" title="Adjuntar" onClick={() => fileInputRef.current?.click()} disabled={uploading || audioRecorder.isRecording} style={uploading || audioRecorder.isRecording ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
                   <Paperclip size={20} />
                 </button>
@@ -1002,13 +1029,13 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </div>
               {(editingMessage ? editText.trim() : inputText.trim()) ? (
                 <div style={{ position: 'relative', display: 'inline-flex' }}>
-                  <ScheduleSendPicker open={showSchedulePicker} onClose={() => setShowSchedulePicker(false)} onSchedule={(d) => { if (onScheduleSend && inputText.trim()) { onScheduleSend(inputText.trim(), d); setInputText(''); setShowSchedulePicker(false); } }} />
-                  <button className="mensajes-send-btn" onClick={handleSend} onContextMenu={(e) => { e.preventDefault(); if (!editingMessage && inputText.trim() && onScheduleSend) setShowSchedulePicker(true); }} disabled={uploading} title={editingMessage ? 'Guardar' : 'Enviar (clic derecho = programar)'}>
+                  <ScheduleSendPicker open={showSchedulePicker} onClose={() => setShowSchedulePicker(false)} onSchedule={(d) => { if (onScheduleSend && inputText.trim()) { onScheduleSend(inputText.trim(), d); setInputText(''); setShowSchedulePicker(false); toast.success('Mensaje programado'); } }} />
+                  <button className="mensajes-send-btn" onClick={handleSend} onContextMenu={(e) => { e.preventDefault(); if (!editingMessage && inputText.trim() && onScheduleSend) setShowSchedulePicker(true); }} title={editingMessage ? 'Guardar' : 'Enviar'}>
                     {editingMessage ? <Check size={18} /> : <Send size={18} />}
                   </button>
                 </div>
               ) : !editingMessage ? (
-                <AudioRecorderButton isRecording={false} duration={0} isSupported={audioRecorder.isSupported} onStart={() => { audioRecorder.startRecording(); sendRecording(); }} onStop={handleAudioSend} onCancel={() => { audioRecorder.cancelRecording(); sendStopTyping(); }} />
+                <AudioRecorderButton isRecording={false} duration={0} isSupported={audioRecorder.isSupported} onStart={() => { audioRecorder.startRecording(); sendRecording(); }} onStop={handleAudioSend} onCancel={() => {}} />
               ) : null}
             </>
           )}

@@ -103,8 +103,8 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute><HomeScreen /></ProtectedRoute>
         } />
 
-        {/* Pagos */}
-        <Route path="pagos" element={
+        {/* Pagos -- wildcard so /pagos/oauth-connect and all sub-routes render inside Pagos */}
+        <Route path="pagos/*" element={
           <ProtectedRoute><Pagos /></ProtectedRoute>
         } />
 
@@ -123,8 +123,11 @@ const AppRoutes: React.FC = () => {
           <ProtectedRoute><Perfil /></ProtectedRoute>
         } />
 
-        {/* Everything else -> 404 */}
+        {/* Admin / Reportes */}
         <Route path="reportes" element={<ProtectedRoute><Reportes /></ProtectedRoute>} />
+        <Route path="admin/reportes" element={<ProtectedRoute><AdminReports /></ProtectedRoute>} />
+
+        {/* Everything else -> 404 */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
@@ -159,8 +162,6 @@ const CallManager: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     </>
   );
 };
-
-// Push handled by useServiceWorker in AppInner
 
 // ===============================================================================
 // INNER APP
@@ -215,7 +216,7 @@ const AppInner: React.FC = () => {
       {/* Inactivity lock overlay */}
       {showInactivityLock && (
         <BiometricLockScreen
-          reason="Sesion inactiva â€” verifica tu identidad"
+          reason="Sesión inactiva — verifica tu identidad"
           onUnlocked={() => biometric.unlockInactivity()}
           onPinFallback={(pin) => {
             const stored = localStorage.getItem('mc_chat_lock_pin');

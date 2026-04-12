@@ -1,8 +1,22 @@
 /**
  * MEXICHAT — Message Mappers
  * Single source of truth for DB row → app type mapping
- * Imported by: useMessagePagination, useRealtimeMessages, Mensajes.tsx
+ * Imported by: useMessagePagination, useRealtimeMessages, Mensajes.tsx, GroupChatWindow.tsx
  */
+
+// ─── Shared role type ───
+
+export type GroupRole = 'owner' | 'admin' | 'moderator' | 'member';
+
+const VALID_ROLES = new Set<GroupRole>(['owner', 'admin', 'moderator', 'member']);
+
+/** Safely coerce any DB string to a valid GroupRole, defaulting to 'member' */
+export function safeRole(raw: unknown): GroupRole {
+  if (typeof raw === 'string' && VALID_ROLES.has(raw as GroupRole)) return raw as GroupRole;
+  return 'member';
+}
+
+// ─── Core interfaces ───
 
 export interface Message {
   id: string;
@@ -27,6 +41,7 @@ export interface GroupMessage {
   mediaUrl: string | null;
   mediaType: string | null;
   createdAt: string;
+  editedAt?: string | null;
   expiresAt: string | null;
   iv: string | null;
 }
@@ -73,7 +88,7 @@ export interface GroupMember {
   avatarUrl: string | null;
   username: string | null;
   isOnline: boolean;
-  role: 'owner' | 'admin' | 'member';
+  role: GroupRole;
 }
 
 export interface GroupInfo {
@@ -135,6 +150,7 @@ export function mapGroupMessage(
     mediaUrl: (row.media_url as string | null) ?? null,
     mediaType: (row.media_type as string | null) ?? null,
     createdAt: ts(row.created_at as string | null),
+    editedAt: (row.edited_at as string | null) ?? null,
     expiresAt: (row.expires_at as string | null) ?? null,
     iv: (row.iv as string | null) ?? null,
   };
@@ -195,7 +211,7 @@ export function mapGroupMember(
     avatarUrl: profile.avatar_url ?? null,
     username: profile.username ?? null,
     isOnline: bool(profile.is_online),
-    role: (role as 'owner' | 'admin' | 'member') ?? 'member',
+    role: safeRole(role),
   };
 }
 

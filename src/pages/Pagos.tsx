@@ -1,14 +1,10 @@
 import { verifyForPayment } from '@/services/biometric';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { usePagos, type Transaction, type SendPayload } from '@/hooks/usePagos';
 import {
-useState, useEffect, useRef, useCallback } from 'react';
-import {
-useAuth } from '@/contexts/AuthContext';
-import {
-supabase } from '@/integrations/supabase/client';
-import {
-usePagos, type Transaction, type SendPayload } from '@/hooks/usePagos';
-import {
-createPayment,
+  createPayment,
   createOXXOPayment,
   searchContacts,
   MexiPayError,
@@ -16,13 +12,157 @@ createPayment,
   type TxProvider,
 } from '@/lib/mercadopago';
 import {
-ArrowLeft, Send, Clock, CheckCircle, XCircle, RefreshCw,
+  ArrowLeft, Send, Clock, CheckCircle, XCircle, RefreshCw,
   Search, User, Store, CreditCard, ChevronDown, X, Loader2,
   ExternalLink, Copy, Check,
 } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+
+// ═══════════════════════════════
+// MERCADO PAGO OAUTH CONFIG
+// ═══════════════════════════════
+
+const MP_CLIENT_ID = import.meta.env.VITE_MP_CLIENT_ID || '';
+const MP_REDIRECT_URI = `${window.location.origin}/pagos/oauth-connect`;
+
+// ═══════════════════════════════
+// OAUTH CONNECT SUB-PAGE
+// ═══════════════════════════════
+
+function OAuthConnect({ userId }: { userId: string }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+  const processedRef = useRef(false);
+
+  // Check for OAuth callback code in URL
+  useEffect(() => {
+    if (processedRef.current) return;
+    const params = new URLSearchParams(location.search);
+    const code = params.get('code');
+
+    if (!code) {
+      // No code = user just arrived, redirect to Mercado Pago OAuth
+      const authUrl = `https://auth.mercadopago.com/authorization?client_id=${MP_CLIENT_ID}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(MP_REDIRECT_URI)}`;
+      window.location.href = authUrl;
+      return;
+    }
+
+    // We have a code — exchange it via Edge Function
+    processedRef.current = true;
+    setStatus('processing');
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('mp-oauth-exchange', {
+          body: { code, redirect_uri: MP_REDIRECT_URI, user_id: userId },
+        });
+
+        if (error) throw new Error(error.message || 'Error al vincular cuenta');
+        if (data?.error) throw new Error(data.error);
+
+        setStatus('success');
+        // Redirect to pagos after short delay
+        setTimeout(() => navigate('/pagos', { replace: true }), 2000);
+      } catch (err) {
+        console.error('[OAuth] exchange error:', err);
+        setStatus('error');
+        setErrorMsg(err instanceof Error ? err.message : 'Error al vincular cuenta');
+      }
+    })();
+  }, [location.search, userId, navigate]);
+
+  if (status === 'processing') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
+        <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
+        <h2 className="text-lg font-bold mb-2">Vinculando Mercado Pago...</h2>
+        <p className="text-gray-500 text-sm text-center">No cierres esta ventana</p>
+      </div>
+    );
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
+        <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
+        <h2 className="text-xl font-bold mb-2">¡Cuenta vinculada!</h2>
+        <p className="text-gray-500 text-sm text-center">Redirigiendo a Pagos...</p>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
+        <XCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h2 className="text-xl font-bold mb-2">Error al vincular</h2>
+        <p className="text-red-500 text-sm text-center mb-4">{errorMsg}</p>
+        <div className="flex gap-3">
+          <button onClick={() => navigate('/pagos', { replace: true })}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition">
+            Volver a Pagos
+          </button>
+          <button onClick={() => {
+            processedRef.current = false;
+            setStatus('idle');
+            setErrorMsg('');
+            // Re-trigger OAuth
+            const authUrl = `https://auth.mercadopago.com/authorization?client_id=${MP_CLIENT_ID}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(MP_REDIRECT_URI)}`;
+            window.location.href = authUrl;
+          }}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition">
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // idle = redirecting to Mercado Pago
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
+      <Loader2 className="w-12 h-12 text-[#009ee3] animate-spin mb-4" />
+      <h2 className="text-lg font-bold mb-2">Conectando con Mercado Pago...</h2>
+      <p className="text-gray-500 text-sm text-center">Serás redirigido en un momento</p>
+    </div>
+  );
+}
+
+// ═══════════════════════════════
+// MAIN PAGOS COMPONENT
+// ═══════════════════════════════
 
 export default function Pagos() {
   const { user } = useAuth();
+  const location = useLocation();
+
+  // ── Route check: if on /pagos/oauth-connect, show OAuth handler ──
+  const isOAuthRoute = location.pathname.includes('/oauth-connect');
+  if (isOAuthRoute && user) {
+    return <OAuthConnect userId={user.id} />;
+  }
+
+  // ── If no user at all, show login prompt ──
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
+        <CreditCard className="w-16 h-16 text-blue-500 mb-4" />
+        <h2 className="text-xl font-bold mb-2">Pagos MexiChat</h2>
+        <p className="text-gray-500">Inicia sesión para usar pagos</p>
+      </div>
+    );
+  }
+
+  return <PagosMain user={user} />;
+}
+
+// ═══════════════════════════════
+// PAGOS MAIN (extracted to avoid hooks-after-early-return)
+// ═══════════════════════════════
+
+function PagosMain({ user }: { user: { id: string; email?: string | null } }) {
   const [activeTab, setActiveTab] = useState<'enviar' | 'historial' | 'cuenta'>('enviar');
 
   // Send form state
@@ -48,7 +188,7 @@ export default function Pagos() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Hook
-  const { transactions, loading, sending, error, hasMore, sendTransaction, loadMore, refresh, clearError } = usePagos(user?.id);
+  const { transactions, loading, sending, error, hasMore, sendTransaction, loadMore, refresh, clearError } = usePagos(user.id);
 
   // ----------
 
@@ -69,8 +209,7 @@ export default function Pagos() {
       setSearchingContacts(true);
       try {
         const results = await searchContacts(query);
-        // Filter out self
-        const filtered = results.filter(c => c.id !== user?.id);
+        const filtered = results.filter(c => c.id !== user.id);
         setContactResults(filtered);
         setShowContactDropdown(filtered.length > 0);
       } catch {
@@ -79,7 +218,7 @@ export default function Pagos() {
         setSearchingContacts(false);
       }
     }, 300);
-  }, [user?.id]);
+  }, [user.id]);
 
   const selectContact = (contact: ContactResult) => {
     setSelectedContact(contact);
@@ -107,20 +246,19 @@ export default function Pagos() {
     setFormSuccess(null);
     setOxxoTicket(null);
 
-    if (!user) { setFormError('Inicia sesion primero'); return; }
     if (!selectedContact) { setFormError('Selecciona un destinatario'); return; }
 
     const numAmount = parseFloat(amount);
     if (!amount || isNaN(numAmount) || numAmount < 10) {
-      setFormError('Monto minimo: $10 MXN');
+      setFormError('Monto mínimo: $10 MXN');
       return;
     }
     if (numAmount > 500000) {
-      setFormError('Monto maximo: $500,000 MXN');
+      setFormError('Monto máximo: $500,000 MXN');
       return;
     }
     if (provider === 'oxxo' && numAmount > 10000) {
-      setFormError('Monto maximo para OXXO: $10,000 MXN');
+      setFormError('Monto máximo para OXXO: $10,000 MXN');
       return;
     }
 
@@ -130,7 +268,6 @@ export default function Pagos() {
       const idempotencyKey = `mc-${Date.now().toString(36)}-${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
 
       if (provider === 'mercadopago') {
-        // Create MP checkout preference
         const result = await createPayment({
           receiver_id: selectedContact.id,
           amount: numAmount,
@@ -146,10 +283,10 @@ export default function Pagos() {
       }
 
       // Biometric gate for payment confirmation
-    const bioOk = await verifyForPayment(numAmount);
-    if (!bioOk) { setFormError('Verificacion biometrica cancelada'); return; }
+      const bioOk = await verifyForPayment(numAmount);
+      if (!bioOk) { setFormError('Verificación biométrica cancelada'); setSubmitting(false); return; }
 
-    if (provider === 'oxxo') {
+      if (provider === 'oxxo') {
         const result = await createOXXOPayment({
           receiver_id: selectedContact.id,
           amount: numAmount,
@@ -164,7 +301,6 @@ export default function Pagos() {
           expiration_date: result.expiration_date,
         });
         setFormSuccess('Referencia OXXO creada. Paga en cualquier tienda OXXO.');
-        // Also record in usePagos
         await sendTransaction({
           receiverId: selectedContact.id,
           amount: numAmount,
@@ -238,19 +374,18 @@ export default function Pagos() {
 
   const [mpConnected, setMpConnected] = useState<boolean | null>(null);
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user.id) return;
     (supabase.from('mp_auth' as any).select('id').eq('user_id', user.id).eq('is_active', true).maybeSingle() as any)
       .then(({ data }: any) => setMpConnected(!!data));
-  }, [user?.id]);
+  }, [user.id]);
 
   // ----------
 
-  if (!user) {
+  if (mpConnected === null) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
-        <CreditCard className="w-16 h-16 text-blue-500 mb-4" />
-        <h2 className="text-xl font-bold mb-2">Pagos MexiChat</h2>
-        <p className="text-gray-500">Inicia sesion para usar pagos</p>
+        <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+        <p className="text-gray-500 text-sm">Verificando cuenta...</p>
       </div>
     );
   }
@@ -294,7 +429,7 @@ export default function Pagos() {
       </div>
 
       <div className="max-w-lg mx-auto p-4">
-        {/* ---------- */}
+        {/* ---------- ENVIAR TAB ---------- */}
         {activeTab === 'enviar' && (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Contact Picker */}
@@ -325,7 +460,7 @@ export default function Pagos() {
                     type="text"
                     value={contactQuery}
                     onChange={(e) => handleContactSearch(e.target.value)}
-                    placeholder="Buscar por nombre, @usuario o telefono..."
+                    placeholder="Buscar por nombre, @usuario o teléfono..."
                     className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none text-sm"
                     autoComplete="off"
                   />
@@ -372,7 +507,7 @@ export default function Pagos() {
                   className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none text-sm"
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-1">Minimo $10 MXN{provider === 'oxxo' ? ' | Maximo $10,000 OXXO' : ''}</p>
+              <p className="text-xs text-gray-400 mt-1">Mínimo $10 MXN{provider === 'oxxo' ? ' | Máximo $10,000 OXXO' : ''}</p>
             </div>
 
             {/* Description */}
@@ -390,7 +525,7 @@ export default function Pagos() {
 
             {/* Payment Method */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Metodo de pago</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Método de pago</label>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setProvider('mercadopago')}
                   className={`flex items-center gap-2 p-3 rounded-lg border-2 transition text-sm font-medium ${
@@ -439,7 +574,7 @@ export default function Pagos() {
                 </h3>
                 {oxxoTicket.barcode && (
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Codigo de barras:</p>
+                    <p className="text-xs text-gray-500 mb-1">Código de barras:</p>
                     <div className="flex items-center gap-2">
                       <code className="bg-white px-3 py-2 rounded border text-sm font-mono flex-1 truncate">
                         {oxxoTicket.barcode}
@@ -481,7 +616,7 @@ export default function Pagos() {
           </form>
         )}
 
-        {/* ---------- */}
+        {/* ---------- HISTORIAL TAB ---------- */}
         {activeTab === 'historial' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -501,11 +636,11 @@ export default function Pagos() {
               <div className="text-center py-8 text-gray-400"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" /> Cargando...</div>
             )}
             {!loading && transactions.length === 0 && (
-              <div className="text-center py-8 text-gray-400">No tienes transacciones aun</div>
+              <div className="text-center py-8 text-gray-400">No tienes transacciones aún</div>
             )}
 
             {transactions.map((tx) => {
-              const isSender = tx.sender_id === user?.id;
+              const isSender = tx.sender_id === user.id;
               const other = isSender ? tx.receiver : tx.sender;
               const otherName = other?.full_name || other?.username || (isSender ? tx.receiver_id.slice(0, 8) : tx.sender_id.slice(0, 8));
 
@@ -524,9 +659,9 @@ export default function Pagos() {
                     </p>
                     <div className="flex items-center gap-2 text-xs text-gray-400">
                       {statusIcon(tx.status)} <span>{statusLabel(tx.status)}</span>
-                      <span>�’�</span>
+                      <span>·</span>
                       <span>{providerLabel(tx.provider)}</span>
-                      <span>�’�</span>
+                      <span>·</span>
                       <span>{formatDate(tx.created_at)}</span>
                     </div>
                     {tx.description && <p className="text-xs text-gray-400 truncate mt-0.5">{tx.description}</p>}
@@ -540,13 +675,13 @@ export default function Pagos() {
 
             {hasMore && (
               <button onClick={loadMore} className="w-full py-2 text-blue-500 text-sm hover:underline">
-                Cargar mas
+                Cargar más
               </button>
             )}
           </div>
         )}
 
-        {/* ---------- */}
+        {/* ---------- CUENTA TAB ---------- */}
         {activeTab === 'cuenta' && (
           <div className="space-y-4">
             <div className="bg-white rounded-lg border p-4">
@@ -565,20 +700,20 @@ export default function Pagos() {
               )}
             </div>
             <div className="bg-white rounded-lg border p-4">
-              <h3 className="font-semibold text-gray-700 mb-2">Metodos de pago disponibles</h3>
+              <h3 className="font-semibold text-gray-700 mb-2">Métodos de pago disponibles</h3>
               <div className="space-y-2">
                 <div className="flex items-center gap-3 text-sm">
                   <CreditCard className="w-5 h-5 text-blue-500" />
-                  <span>Mercado Pago �’ Tarjeta, saldo, transferencia</span>
+                  <span>Mercado Pago — Tarjeta, saldo, transferencia</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
                   <Store className="w-5 h-5 text-orange-500" />
-                  <span>OXXO �’ Pago en efectivo en tienda</span>
+                  <span>OXXO — Pago en efectivo en tienda</span>
                 </div>
               </div>
             </div>
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-400 text-center">
-              Comision de servicio: $5 MXN por transaccion
+              Comisión de servicio: $5 MXN por transacción
             </div>
           </div>
         )}

@@ -1,33 +1,3 @@
-/**
- * MexiChat — Copyright (c) 2024-2026 MexiVanza. All Rights Reserved.
- * Proprietary and confidential. Unauthorized copying, modification,
- * distribution, or use of this software is strictly prohibited.
- * See LICENSE file for details.
- */
-/**
- * MEXICHAT — ENTERPRISE MESSAGING SYSTEM v8.1
- * Thin orchestrator — all logic in hooks, all UI in components
- *
- * AUDIT LOG v8.1 (2026-04-09):
- * - FIX: SQL injection in useSimpleSearch via .or() interpolation — sanitized
- * - FIX: handleUnblockUser double setBlockedIds + missing setUnblockingId
- * - FIX: SVG upload removed (XSS vector)
- * - FIX: handleSendGroupMessage duplicate if(mediaUrl) line removed
- * - FIX: All confirm-dialog onConfirm callbacks wrapped in try/catch
- * - FIX: loadGroupMessages wrapped in try/catch
- * - FIX: onScheduleSend missing .catch()
- * - FIX: handleSendMessage not awaited in payment flow
- * - FIX: WallpaperPicker guarded against no active chat
- * - FIX: messagesLoading stale closure — uses ref
- * - FIX: blockedIds Set in deps — uses serialized key
- * - FIX: mountedRef prevents setState-on-unmount in search
- * - FIX: Input length validation on profile save
- * - FIX: Report category sanitized before broadcast
- * - FIX: Unused imports removed
- * - ADD: Rate limiting on search (MIN_SEARCH_INTERVAL_MS)
- * - ADD: UUID validation on conversation lookup
- */
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -84,7 +54,7 @@ import { useBulkSelect } from '@/hooks/useBulkSelect';
 
 // ──────────────────────────────
 // HOOKS — v8 new
-// ─────────────────────���────────
+// ────────────────��─────────────
 import { useGroupInvites } from '@/hooks/useGroupInvites';
 import { useMessageReactions } from '@/hooks/useMessageReactions';
 import { useMessageEdit } from '@/hooks/useMessageEdit';
@@ -122,9 +92,11 @@ import {
   type GroupMessage,
   type GroupMember,
   type GroupInfo,
+  type GroupRole,
   type Message,
   str,
   bool,
+  safeRole,
   mapDmMessage,
   mapGroupMessage,
   mapGroupMember,
@@ -167,19 +139,30 @@ const MAX_USERNAME_LENGTH = 30;
 const MAX_BIO_LENGTH = 150;
 const MAX_GROUP_NAME_LENGTH = 60;
 const MAX_GROUP_DESC_LENGTH = 300;
-const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_REPORT_CATEGORIES = new Set([
   'spam', 'harassment', 'fake', 'underage', 'scam', 'csam', 'extortion', 'threats', 'other',
 ]);
+const SAFE_AVATAR_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp']);
+const REPORT_RATE_LIMIT_MS = 10_000;
+const PROMOTE_RATE_LIMIT_MS = 2_000;
+
+// ──────────────────────────────
+// SUPABASE UNTYPED TABLE HELPER
+// ──────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function untypedFrom(table: string): any {
+  return (supabase as any).from(table);
+}
 
 // ──────────────────────────────
 // VALIDATION HELPERS
 // ──────────────────────────────
 
-function isValidUUID(id: string): boolean {
-  return UUID_REGEX.test(id);
+function isValidUUID(id: unknown): id is string {
+  return typeof id === 'string' && UUID_REGEX.test(id);
 }
 
 function sanitizeSearchQuery(raw: string): string {
@@ -211,7 +194,7 @@ async function uploadAvatar(
   bucket: string,
   path: string,
 ): Promise<string | null> {
-  if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+  if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
     toast.error('Formato no soportado. Usa JPG, PNG, GIF o WebP');
     return null;
   }
@@ -221,7 +204,7 @@ async function uploadAvatar(
   }
 
   const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-  const safeExt = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) ? ext : 'jpg';
+  const safeExt = SAFE_AVATAR_EXTENSIONS.has(ext) ? ext : 'jpg';
   const fileName = `${path}/${Date.now()}.${safeExt}`;
 
   const { error: uploadError } = await supabase.storage
@@ -229,7 +212,7 @@ async function uploadAvatar(
     .upload(fileName, file, { upsert: true });
 
   if (uploadError) {
-    console.error('Avatar upload error:', uploadError);
+    console.error('[Avatar] upload error:', uploadError.message);
     toast.error('Error al subir imagen');
     return null;
   }
@@ -239,20 +222,32 @@ async function uploadAvatar(
 }
 
 // ──────────────────────────────
+// RATE LIMITER
+// ──────────────────────────────
+
+function createRateLimiter(intervalMs: number): () => boolean {
+  let lastCall = 0;
+  return () => {
+    const now = Date.now();
+    if (now - lastCall < intervalMs) return false;
+    lastCall = now;
+    return true;
+  };
+}
+
+// ──────────────────────────────
 // SIMPLE SEARCH HOOK (carrier-grade)
 // ──────────────────────────────
 
 function useSimpleSearch(myUserId: string | undefined, blockedIds: Set<string>) {
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<ProfileRow[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const mountedRef = useRef(true);
   const lastSearchRef = useRef(0);
   const blockedIdsRef = useRef(blockedIds);
 
-  // Keep blockedIds ref current without triggering effect re-runs
   useEffect(() => { blockedIdsRef.current = blockedIds; }, [blockedIds]);
-
   useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 
   useEffect(() => {
@@ -266,7 +261,6 @@ function useSimpleSearch(myUserId: string | undefined, blockedIds: Set<string>) 
 
     setIsSearching(true);
     const timer = setTimeout(async () => {
-      // Rate limiting
       const now = Date.now();
       const elapsed = now - lastSearchRef.current;
       if (elapsed < MIN_SEARCH_INTERVAL_MS) {
@@ -283,8 +277,8 @@ function useSimpleSearch(myUserId: string | undefined, blockedIds: Set<string>) 
         if (!mountedRef.current) return;
         if (error) { console.error('[Search] query error:', error); setResults([]); return; }
         const filtered = (data || [])
-          .map((p: any) => ({ ...p, user_id: p.id }))
-          .filter((p: any) => !blockedIdsRef.current.has(p.user_id));
+          .map((p: Record<string, unknown>) => ({ ...p, user_id: p.id } as unknown as ProfileRow))
+          .filter((p) => !blockedIdsRef.current.has(p.user_id));
         setResults(filtered);
       } catch (err) {
         console.error('[Search] unexpected error:', err);
@@ -299,6 +293,7 @@ function useSimpleSearch(myUserId: string | undefined, blockedIds: Set<string>) 
   const clear = useCallback(() => { setQuery(''); setResults([]); }, []);
   return { query, setQuery, results, isSearching, clear };
 }
+
 // ──────────────────────────────
 // SETTINGS PANEL COMPONENT
 // ──────────────────────────────
@@ -311,29 +306,31 @@ interface SettingsPanelProps {
   chatLock: ReturnType<typeof useChatLock>;
   blockedIds: Set<string>;
   setBlockedIds: React.Dispatch<React.SetStateAction<Set<string>>>;
+  onTriggerTutorial: () => void;
 }
 
-const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfileUpdated, privacySettings, chatLock, blockedIds, setBlockedIds }) => {
+const SettingsPanel: React.FC<SettingsPanelProps> = ({
+  profile, onClose, onProfileUpdated, privacySettings, chatLock,
+  blockedIds, setBlockedIds, onTriggerTutorial,
+}) => {
   const [uploading, setUploading] = useState(false);
   const [fullName, setFullName] = useState(str(profile.full_name, ''));
   const [username, setUsername] = useState(profile.username || '');
-  const [bio, setBio] = useState((profile as any).bio || '');
-  const [nationality, setNationality] = useState((profile as any).nationality || '');
-  const [gender, setGender] = useState((profile as any).gender || '');
+  const [bio, setBio] = useState(String((profile as unknown as Record<string, unknown>).bio ?? ''));
+  const [nationality, setNationality] = useState(String((profile as unknown as Record<string, unknown>).nationality ?? ''));
+  const [gender, setGender] = useState(String((profile as unknown as Record<string, unknown>).gender ?? ''));
   const [saving, setSaving] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'privacy' | 'security' | 'appearance'>('profile');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { signOut } = useAuth();
   const theme = useTheme();
 
-  // -- Blocked Users State --
-  const [blockedProfiles, setBlockedProfiles] = useState<any[]>([]);
+  const [blockedProfiles, setBlockedProfiles] = useState<ProfileRow[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(false);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
-  const [sentReports, setSentReports] = useState<any[]>([]);
+  const [sentReports, setSentReports] = useState<Record<string, unknown>[]>([]);
   const [loadingReports, setLoadingReports] = useState(false);
 
-  // Serialize blockedIds for stable dependency
   const blockedIdsKey = useMemo(() => [...blockedIds].sort().join(','), [blockedIds]);
 
   useEffect(() => {
@@ -346,10 +343,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
         if (cancelled) return;
         if (error) { console.error('[Settings] blocked fetch error:', error); setLoadingBlocked(false); return; }
         if (!blocked || blocked.length === 0) { setBlockedProfiles([]); setLoadingBlocked(false); return; }
-        const ids = blocked.map((b: any) => b.blocked_id);
+        const ids = blocked.map((b: Record<string, unknown>) => b.blocked_id as string);
         const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', ids);
         if (cancelled) return;
-        setBlockedProfiles((profs || []).map((p: any) => ({ ...p, user_id: p.id })));
+        setBlockedProfiles((profs || []).map((p: Record<string, unknown>) => ({ ...p, user_id: p.id } as unknown as ProfileRow)));
       } catch (err) {
         console.error('[Settings] blocked users error:', err);
         if (!cancelled) setBlockedProfiles([]);
@@ -365,19 +362,22 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
     setLoadingReports(true);
     (async () => {
       try {
-        const { data: reports } = await (supabase.from('reported_users' as any).select('*') as any).eq('reporter_id', profile.user_id).order('created_at', { ascending: false }).limit(50);
+        const { data: reports } = await untypedFrom('reported_users').select('*').eq('reporter_id', profile.user_id).order('created_at', { ascending: false }).limit(50);
         if (cancelled) return;
         if (!reports || reports.length === 0) { setSentReports([]); setLoadingReports(false); return; }
-        const reportedIds = [...new Set((reports as any[]).map((r: any) => r.reported_id))] as string[];
+        const reportedIds = [...new Set((reports as Record<string, unknown>[]).map((r) => r.reported_id as string))];
         const { data: profs } = await supabase.from('profiles').select('id, full_name, avatar_url, username').in('id', reportedIds);
         if (cancelled) return;
-        const profMap = new Map((profs || []).map((p: any) => [p.id, p]));
-        setSentReports((reports as any[]).map((r: any) => ({
-          ...r,
-          reported_name: (profMap.get(r.reported_id) as any)?.full_name || 'Desconocido',
-          reported_avatar: (profMap.get(r.reported_id) as any)?.avatar_url,
-          reported_username: (profMap.get(r.reported_id) as any)?.username,
-        })));
+        const profMap = new Map((profs || []).map((p: Record<string, unknown>) => [p.id as string, p]));
+        setSentReports((reports as Record<string, unknown>[]).map((r) => {
+          const rp = profMap.get(r.reported_id as string) as Record<string, unknown> | undefined;
+          return {
+            ...r,
+            reported_name: rp?.full_name || 'Desconocido',
+            reported_avatar: rp?.avatar_url ?? null,
+            reported_username: rp?.username ?? null,
+          };
+        }));
       } catch (err) {
         console.error('[Settings] reports fetch error:', err);
         if (!cancelled) setSentReports([]);
@@ -388,12 +388,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
   }, [activeSettingsTab, profile.user_id]);
 
   const handleUnblockUser = async (targetId: string) => {
+    if (!isValidUUID(targetId)) return;
     setUnblockingId(targetId);
     try {
       const { error } = await supabase.from('blocked_users').delete().eq('blocker_id', profile.user_id).eq('blocked_id', targetId);
       if (error) { toast.error('Error al desbloquear: ' + (error.message || '')); return; }
-      setBlockedIds((prev: Set<string>) => { const next = new Set(prev); next.delete(targetId); return next; });
-      setBlockedProfiles(prev => prev.filter((p: any) => p.user_id !== targetId));
+      setBlockedIds((prev) => { const next = new Set(prev); next.delete(targetId); return next; });
+      setBlockedProfiles(prev => prev.filter((p) => p.user_id !== targetId));
       toast.success('Usuario desbloqueado');
     } catch (err) {
       console.error('[Settings] unblock error:', err);
@@ -434,12 +435,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
     try {
       const updates: Record<string, string | null> = { full_name: trimmedName };
       if (trimmedUsername) updates.username = trimmedUsername;
-      if (trimmedBio !== ((profile as any).bio || '')) updates.bio = trimmedBio;
-      if (nationality !== ((profile as any).nationality || '')) updates.nationality = nationality || null;
-      if (gender !== ((profile as any).gender || '')) updates.gender = gender || null;
+      if (trimmedBio !== String((profile as unknown as Record<string, unknown>).bio ?? '')) updates.bio = trimmedBio;
+      if (nationality !== String((profile as unknown as Record<string, unknown>).nationality ?? '')) updates.nationality = nationality || null;
+      if (gender !== String((profile as unknown as Record<string, unknown>).gender ?? '')) updates.gender = gender || null;
       const { error } = await supabase.from('profiles').update(updates).eq('id', profile.user_id);
       if (error) { toast.error('Error al guardar: ' + (error.message || '')); return; }
-      onProfileUpdated({ ...profile, full_name: updates.full_name ?? profile.full_name, username: updates.username || profile.username, bio: updates.bio, nationality: updates.nationality, gender: updates.gender } as any);
+      onProfileUpdated({ ...profile, full_name: updates.full_name ?? profile.full_name, username: updates.username || profile.username } as ProfileRow);
       toast.success('Perfil actualizado');
     } catch (err) {
       console.error('[Settings] save profile error:', err);
@@ -510,7 +511,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
           <span style={{ fontWeight: 700, fontSize: '16px', color: MC.text, display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Settings size={18} style={{ color: MC.blue }} /> Configuracion
           </span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: MC.textMuted, cursor: 'pointer', fontSize: '18px', padding: '4px' }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: MC.textMuted, cursor: 'pointer', padding: '4px' }}>
             <XIcon size={18} />
           </button>
         </div>
@@ -544,7 +545,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                   </div>
                   <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
                     style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '32px', height: '32px', borderRadius: '50%', background: MC.blue, border: `2px solid ${MC.sidebar}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: uploading ? 'wait' : 'pointer', color: 'white' }} title="Cambiar avatar">
-                    {uploading ? <div style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> : <Camera size={14} />}
+                    {uploading ? <div style={{ width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'mc-spin 0.8s linear infinite' }} /> : <Camera size={14} />}
                   </button>
                   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleAvatarChange} style={{ display: 'none' }} />
                 </div>
@@ -563,11 +564,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                     style={{ width: '100%', padding: '10px 14px 10px 28px', background: MC.inputBg, border: `1px solid ${MC.border}`, borderRadius: '8px', color: MC.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              {(profile as any).phone && (
+              {profile.phone && (
                 <div>
                   <label style={{ fontSize: '13px', color: MC.textMuted, marginBottom: '6px', display: 'block' }}>Telefono</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: MC.inputBg, border: `1px solid ${MC.border}`, borderRadius: '8px', fontSize: '14px', color: MC.textMuted }}>
-                    <Phone size={14} /> {(profile as any).phone}
+                    <Phone size={14} /> {profile.phone}
                   </div>
                 </div>
               )}
@@ -600,7 +601,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                 style={{ padding: '10px', background: MC.blue, border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                 {saving ? 'Guardando...' : 'Guardar Cambios'}
               </button>
-              <button onClick={() => { triggerTutorial(); onClose(); }}
+              <button onClick={() => { onTriggerTutorial(); onClose(); }}
                 style={{ padding: '10px', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '8px', color: '#3b82f6', fontWeight: 600, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Globe size={16} /> Ver Tutorial
               </button>
@@ -615,7 +616,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
           {activeSettingsTab === 'privacy' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {([
-                { label: 'Última vez visto', key: 'lastSeenVisibility' as const },
+                { label: '\u00daltima vez visto', key: 'lastSeenVisibility' as const },
                 { label: 'Estado en linea', key: 'onlineVisibility' as const },
                 { label: 'Foto de perfil', key: 'avatarVisibility' as const },
               ]).map(item => (
@@ -672,17 +673,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {blockedProfiles.map((bp: any) => (
+                    {blockedProfiles.map((bp) => (
                       <div key={bp.user_id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: MC.inputBg, borderRadius: '10px', border: '1px solid ' + MC.border }}>
                         <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: MC.border, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {bp.avatar_url ? <img src={bp.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={18} style={{ color: MC.textMuted }} />}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: MC.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{bp.full_name || 'Usuario'}</div>
-                          {bp.username && <div style={{ fontSize: '11px', color: MC.textMuted }}>{'@' + bp.username}</div>}
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: MC.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bp.full_name || 'Usuario'}</div>
+                          {bp.username && <div style={{ fontSize: '11px', color: MC.textMuted }}>@{bp.username}</div>}
                         </div>
                         <button onClick={() => handleUnblockUser(bp.user_id)} disabled={unblockingId === bp.user_id}
-                          style={{ padding: '5px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: MC.danger, fontSize: '11px', fontWeight: 600, cursor: unblockingId === bp.user_id ? 'wait' : 'pointer', whiteSpace: 'nowrap' as const }}>
+                          style={{ padding: '5px 12px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: MC.danger, fontSize: '11px', fontWeight: 600, cursor: unblockingId === bp.user_id ? 'wait' : 'pointer', whiteSpace: 'nowrap' }}>
                           {unblockingId === bp.user_id ? '...' : 'Desbloquear'}
                         </button>
                       </div>
@@ -710,26 +711,31 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {sentReports.map((r: any) => {
-                      const statusMap: Record<string, { label: string; color: string; bg: string }> = { pending: { label: 'Pendiente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' }, reviewed: { label: 'Revisado', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' }, action_taken: { label: 'Accion tomada', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' }, dismissed: { label: 'Descartado', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' } };
-                      const st = statusMap[r.status || 'pending'] || statusMap.pending;
-                      const cat = (r.reason || '').replace(/^\[/, '').replace(/\].*/, '');
+                    {sentReports.map((r) => {
+                      const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+                        pending: { label: 'Pendiente', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+                        reviewed: { label: 'Revisado', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+                        action_taken: { label: 'Accion tomada', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+                        dismissed: { label: 'Descartado', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)' },
+                      };
+                      const st = statusMap[(r.status as string) || 'pending'] || statusMap.pending;
+                      const cat = ((r.reason as string) || '').replace(/^\[/, '').replace(/\].*/, '');
                       const catLabels: Record<string, string> = { spam: 'Spam', harassment: 'Acoso', fake: 'Perfil falso', underage: 'Menor', scam: 'Estafa', csam: 'CSAM', extortion: 'Extorsion', threats: 'Amenazas', other: 'Otro' };
                       return (
-                        <div key={r.id} style={{ padding: '10px 12px', background: MC.inputBg, borderRadius: '10px', border: '1px solid ' + MC.border }}>
+                        <div key={r.id as string} style={{ padding: '10px 12px', background: MC.inputBg, borderRadius: '10px', border: '1px solid ' + MC.border }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
                             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: MC.border, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              {r.reported_avatar ? <img src={r.reported_avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={14} style={{ color: MC.textMuted }} />}
+                              {r.reported_avatar ? <img src={r.reported_avatar as string} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User size={14} style={{ color: MC.textMuted }} />}
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ fontSize: '13px', fontWeight: 600, color: MC.text }}>{r.reported_name}</span>
-                              {r.reported_username && <span style={{ fontSize: '11px', color: MC.textMuted, marginLeft: '6px' }}>{'@' + r.reported_username}</span>}
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: MC.text }}>{String(r.reported_name ?? 'Desconocido')}</span>
+                              {r.reported_username ? <span style={{ fontSize: '11px', color: MC.textMuted, marginLeft: '6px' }}>@{String(r.reported_username)}</span> : null}     
                             </div>
-                            <span style={{ background: st.bg, color: st.color, padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap' as const }}>{st.label}</span>
+                            <span style={{ background: st.bg, color: st.color, padding: '2px 8px', borderRadius: '10px', fontSize: '10px', fontWeight: 700, whiteSpace: 'nowrap' }}>{st.label}</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: MC.textMuted }}>
                             <span style={{ background: 'rgba(239,68,68,0.08)', color: MC.danger, padding: '1px 8px', borderRadius: '6px', fontWeight: 600 }}>{catLabels[cat] || cat || 'Reporte'}</span>
-                            <span>{r.created_at ? new Date(r.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span>
+                            <span>{r.created_at ? new Date(r.created_at as string).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span>
                           </div>
                         </div>
                       );
@@ -782,7 +788,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                   Navegador: {navigator.userAgent.includes('Mobile') ? 'Movil' : 'Escritorio'}
                 </div>
                 <div style={{ fontSize: '12px', color: MC.textMuted }}>
-                  Última actividad: {new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {'\u00da'}ltima actividad: {new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
               </div>
             </div>
@@ -825,7 +831,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
                         boxShadow: theme.config.accentColor === key ? `0 0 0 3px ${color.bg}` : 'none',
                       }}>
                       {theme.config.accentColor === key && (
-                        <span style={{ color: '#fff', fontSize: '14px', fontWeight: 700 }}>✓</span>
+                        <span style={{ color: '#fff', fontSize: '14px', fontWeight: 700 }}>{'\u2713'}</span>
                       )}
                     </button>
                   ))}
@@ -853,7 +859,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ profile, onClose, onProfi
           )}
         </div>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes mc-spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
@@ -897,8 +903,8 @@ const GroupAvatarPicker: React.FC<GroupAvatarPickerProps> = ({ avatarUrl, onAvat
           {avatarUrl ? <img src={avatarUrl} alt="Grupo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Users size={24} />}
         </div>
         <button onClick={() => fileRef.current?.click()} disabled={disabled || uploading}
-          style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '24px', height: '24px', borderRadius: '50%', background: MC.blue, border: `2px solid ${MC.sidebar}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (disabled || uploading) ? 'wait' : 'pointer', color: 'white' }} title="Subir foto de grupo">
-          {uploading ? <div style={{ width: '10px', height: '10px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> : <Camera size={10} />}
+          style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '24px', height: '24px', borderRadius: '50%', background: MC.blue, border: `2px solid ${MC.sidebar}`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (disabled || uploading) ? 'wait' : 'pointer', color: 'white' }}>
+          {uploading ? <div style={{ width: '10px', height: '10px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'mc-spin 0.8s linear infinite' }} /> : <Camera size={10} />}
         </button>
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleFile} style={{ display: 'none' }} />
       </div>
@@ -906,6 +912,7 @@ const GroupAvatarPicker: React.FC<GroupAvatarPickerProps> = ({ avatarUrl, onAvat
     </div>
   );
 };
+
 // ──────────────────────────────
 // MAIN COMPONENT
 // ──────────────────────────────
@@ -929,7 +936,7 @@ const Mensajes: React.FC = () => {
   const [groupMessages, setGroupMessages] = useState<GroupMessage[]>([]);
   const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
   const [activeGroupInfo, setActiveGroupInfo] = useState<GroupInfo | null>(null);
-  const [myGroupRole, setMyGroupRole] = useState<'owner' | 'admin' | 'member'>('member');
+  const [myGroupRole, setMyGroupRole] = useState<GroupRole>('member');
 
   const [showNewChat, setShowNewChat] = useState(false);
   const [showNewGroup, setShowNewGroup] = useState(false);
@@ -956,6 +963,8 @@ const Mensajes: React.FC = () => {
   const [mutedIds, setMutedIds] = useState<Set<string>>(new Set());
 
   const profilesRef = useRef(new Map<string, ProfileRow>());
+  const promoteRateLimiter = useMemo(() => createRateLimiter(PROMOTE_RATE_LIMIT_MS), []);
+  const reportRateLimiter = useMemo(() => createRateLimiter(REPORT_RATE_LIMIT_MS), []);
 
   useEffect(() => {
     setWindowActiveConvId(activeConvId);
@@ -985,7 +994,6 @@ const Mensajes: React.FC = () => {
     removeMessage: removeDmMessage, removeMessages: removeDmMessages, reset: resetMessages,
   } = useMessagePagination<Message>('private_messages', 'conversation_id', dmMapper);
 
-  // Ref to avoid stale closure in scroll handler
   const messagesLoadingRef = useRef(messagesLoading);
   useEffect(() => { messagesLoadingRef.current = messagesLoading; }, [messagesLoading]);
 
@@ -1024,12 +1032,15 @@ const Mensajes: React.FC = () => {
   const channels = useChannels(myUserId);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+  // Stable ref for loadArchived to prevent infinite loop
+  const loadArchivedRef = useRef(archivedChats.loadArchived);
+  useEffect(() => { loadArchivedRef.current = archivedChats.loadArchived; }, [archivedChats.loadArchived]);
+  useEffect(() => { loadArchivedRef.current(); }, []);
+
   useEffect(() => {
     if (activeConvId) paymentRequests.loadRequests(activeConvId);
     else if (activeGroupId) paymentRequests.loadRequests(undefined, activeGroupId);
   }, [activeConvId, activeGroupId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { archivedChats.loadArchived(); }, [archivedChats.loadArchived]);
 
   useEffect(() => {
     if (messages.length > 0 && activeConvId) {
@@ -1074,7 +1085,7 @@ const Mensajes: React.FC = () => {
     onDelete: useCallback((id: string) => { removeDmMessage(id); }, [removeDmMessage]),
   });
 
-  // ──────────────────────────────
+  // ──────────────���───────────────
   // GLOBAL NAVIGATION EVENT
   // ──────────────────────────────
 
@@ -1127,7 +1138,7 @@ const Mensajes: React.FC = () => {
     return () => container.removeEventListener('scroll', handleScroll);
   }, [activeConvId, loadOlderMessages, hasMoreMessages]);
 
-  // ──────────────────────────────
+  // ─────────────────────────────��
   // PROFILE + BLOCKED
   // ──────────────────────────────
 
@@ -1161,53 +1172,74 @@ const Mensajes: React.FC = () => {
   // ──────────────────────────────
 
   const loadGroupMessages = useCallback(async (groupId: string) => {
-    if (!isValidUUID(groupId)) { console.error('[Groups] invalid groupId:', groupId); return; }
+    if (!isValidUUID(groupId) || !myUserId) {
+      console.error('[Groups] invalid groupId or missing userId:', groupId, myUserId);
+      return;
+    }
     try {
-      const { data, error: msgsError } = await supabase.from('group_messages')
-        .select('*')
-        .eq('group_id', groupId).order('created_at', { ascending: true }).limit(200);
-      if (msgsError) console.error('[Groups] messages fetch error:', msgsError);
+      const [msgsResult, membersResult] = await Promise.all([
+        supabase.from('group_messages')
+          .select('*')
+          .eq('group_id', groupId)
+          .order('created_at', { ascending: true })
+          .limit(200),
+        supabase.from('group_members')
+          .select('*')
+          .eq('group_id', groupId),
+      ]);
 
-      const { data: membersData, error: membersError } = await supabase.from('group_members')
-        .select('*').eq('group_id', groupId);
-      if (membersError) console.error('[Groups] members fetch error:', membersError);
+      if (msgsResult.error) console.error('[Groups] messages fetch error:', msgsResult.error);
+      if (membersResult.error) console.error('[Groups] members fetch error:', membersResult.error);
 
+      const membersData = membersResult.data;
       const memberUserIds: string[] = membersData?.map(m => m.user_id) ?? [];
+
       if (memberUserIds.length > 0) {
         const { data: memberProfiles } = await supabase.from('profiles')
           .select('id, full_name, avatar_url, username, is_online, last_seen, phone')
           .in('id', memberUserIds);
         if (memberProfiles) {
-          for (const p of memberProfiles) { profilesRef.current.set(p.id, { ...p, user_id: p.id } as unknown as ProfileRow); }
+          for (const p of memberProfiles) {
+            profilesRef.current.set(p.id, { ...p, user_id: p.id } as unknown as ProfileRow);
+          }
           setGroupMembers(memberProfiles.map(p => {
             const memberRow = membersData?.find(m => m.user_id === p.id);
             return mapGroupMember(p as unknown as ProfileRow, memberRow?.role ?? 'member');
           }));
         }
+      } else {
+        setGroupMembers([]);
       }
+
       const myMembership = membersData?.find(m => m.user_id === myUserId);
-      setMyGroupRole((myMembership?.role as 'owner' | 'admin' | 'member') ?? 'member');
+      setMyGroupRole(safeRole(myMembership?.role));
 
       const { data: gInfo, error: gInfoError } = await supabase.from('groups').select('*').eq('id', groupId).single();
       if (gInfoError) console.error('[Groups] info fetch error:', gInfoError);
       if (gInfo) setActiveGroupInfo(mapGroupInfo(gInfo as unknown as Record<string, unknown>));
 
-      if (data) setGroupMessages(data.map(m => mapGroupMessage(m as unknown as Record<string, unknown>, profilesRef.current)));
-
-      if (myUserId) {
-        try {
-          const client = supabase.from as unknown as (t: string) => { upsert: (r: Record<string, unknown>, opts?: Record<string, unknown>) => Promise<unknown>; };
-          await client('group_read_receipts').upsert({ group_id: groupId, user_id: myUserId, last_read_at: new Date().toISOString() }, { onConflict: 'group_id,user_id' });
-        } catch { /* read receipt is best-effort */ }
+      if (msgsResult.data) {
+        setGroupMessages(msgsResult.data.map(m => mapGroupMessage(m as unknown as Record<string, unknown>, profilesRef.current)));
       }
+
+      // Best-effort read receipt
+      try {
+        await untypedFrom('group_read_receipts')
+          .upsert(
+            { group_id: groupId, user_id: myUserId, last_read_at: new Date().toISOString() },
+            { onConflict: 'group_id,user_id' }
+          );
+      } catch { /* best-effort */ }
     } catch (err) {
       console.error('[Groups] loadGroupMessages critical error:', err);
       toast.error('Error al cargar grupo');
     }
   }, [myUserId]);
 
+  // Realtime: group messages
   useEffect(() => {
     if (!activeGroupId || !myUserId) return;
+    if (!isValidUUID(activeGroupId)) return;
     const gId = activeGroupId;
     const channel = supabase.channel(`group-messages:${gId}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages', filter: `group_id=eq.${gId}` }, (payload) => {
@@ -1228,11 +1260,25 @@ const Mensajes: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, [activeGroupId, myUserId]);
 
+  // Realtime: group_members changes (role changes, members added/removed)
+  useEffect(() => {
+    if (!activeGroupId || !myUserId) return;
+    if (!isValidUUID(activeGroupId)) return;
+    const gId = activeGroupId;
+    const channel = supabase.channel(`group-members-live:${gId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_members', filter: `group_id=eq.${gId}` }, () => {
+        loadGroupMessages(gId);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeGroupId, myUserId, loadGroupMessages]);
+
   // ──────────────────────────────
   // CONVERSATION / GROUP SELECTION
   // ──────────────────────────────
 
   const handleSelectConversation = useCallback(async (convId: string) => {
+    if (!isValidUUID(convId)) return;
     if (activeConvId) {
       const input = document.querySelector('.mensajes-input-text') as HTMLInputElement | null;
       if (input?.value?.trim()) chatDrafts.setDraft(activeConvId, input.value);
@@ -1252,6 +1298,7 @@ const Mensajes: React.FC = () => {
   }, [conversations, loadMessagesInitial, resetMessages, myUserId, bulkSelect, trackEvent, activeConvId, chatDrafts, messageSearch, threadReplies]);
 
   const handleSelectGroup = useCallback((groupId: string) => {
+    if (!isValidUUID(groupId)) return;
     if (activeGroupId) {
       const input = document.querySelector('.mensajes-input-text') as HTMLInputElement | null;
       if (input?.value?.trim()) chatDrafts.setDraft(activeGroupId, input.value);
@@ -1274,7 +1321,8 @@ const Mensajes: React.FC = () => {
     setActiveGroupInfo(null); setShowMobile('sidebar'); setAutoAcceptCall(null); bulkSelect.stopSelecting();
     setShowMessageSearch(false); messageSearch.clear(); threadReplies.closeThread();
   }, [bulkSelect, activeConvId, activeGroupId, chatDrafts, messageSearch, threadReplies]);
-    // ──────────────────────────────
+
+  // ──────────────────────────────
   // SEND MESSAGE
   // ──────────────────────────────
 
@@ -1286,7 +1334,8 @@ const Mensajes: React.FC = () => {
     chatDrafts.clearDraft(convId);
     const tempId = `temp-${Date.now()}`;
     deliveryStatus.markSending(tempId);
-    let finalContent = content || ''; let iv: string | null = null; const isLocation = mediaType === 'location';
+    let finalContent = content || ''; let iv: string | null = null;
+    const isLocation = mediaType === 'location';
     const isPaymentRequest = finalContent.startsWith('[PAYMENT_REQUEST:');
     if (finalContent && activeOtherUserId && e2ee.isReady && !isLocation && !isPaymentRequest) {
       try {
@@ -1294,18 +1343,18 @@ const Mensajes: React.FC = () => {
         if (encrypted) { finalContent = encrypted.ciphertext; iv = encrypted.iv; }
       } catch (err) {
         console.error('[E2EE] encryption error:', err);
-        // Fall through — send unencrypted rather than failing silently
       }
     }
     const expiresAt = disappearing.getExpiresAt(disappearing.timer);
     const insertPayload: Record<string, unknown> = {
-      conversation_id: convId, sender_id: myUserId, content: finalContent,
+      chat_id: convId, conversation_id: convId, sender_id: myUserId, receiver_id: receiverId,
+      content: finalContent,
       media_url: mediaUrl || null, media_type: mediaType || null, is_read: false,
       reply_to: replyTo || null, is_forwarded: isForwarded === true,
     };
     if (expiresAt) insertPayload.expires_at = expiresAt;
     if (iv) insertPayload.iv = iv;
-    const { data: insertedMsg, error } = await supabase.from('private_messages').insert(insertPayload as any).select('id').single();
+    const { data: insertedMsg, error } = await supabase.from('private_messages').insert(insertPayload as never).select('id').single();
     if (error) { toast.error('Error al enviar'); deliveryStatus.markFailed(tempId); return; }
     if (insertedMsg) deliveryStatus.markSent(String((insertedMsg as Record<string, unknown>).id));
     processAutoResponse(convId, myUserId, content).catch(() => {});
@@ -1319,14 +1368,14 @@ const Mensajes: React.FC = () => {
         notifyChannel.send({
           type: 'broadcast', event: 'new-message',
           payload: { to: receiverId, from: myUserId, fromName: str(myProfile?.full_name, 'Usuario'),
-            preview: content ? content.slice(0, 100) : '📩 Nuevo mensaje', conversationId: convId, avatarUrl: myProfile?.avatar_url || null },
+            preview: content ? content.slice(0, 100) : '\uD83D\uDCE9 Nuevo mensaje', conversationId: convId, avatarUrl: myProfile?.avatar_url || null },
         });
         setTimeout(() => supabase.removeChannel(notifyChannel), 3_000);
       }
     });
     sendPushNotification({
       targetUserId: receiverId, type: 'message', title: str(myProfile?.full_name, 'Usuario'),
-      body: content ? content.slice(0, 100) : '📩 Nuevo mensaje', fromUserId: myUserId,
+      body: content ? content.slice(0, 100) : '\uD83D\uDCE9 Nuevo mensaje', fromUserId: myUserId,
       conversationId: convId, avatarUrl: myProfile?.avatar_url || null,
     }).catch(() => {});
     trackEvent('message_sent', { type: mediaType || 'text', hasReply: !!replyTo, isForwarded: !!isForwarded, encrypted: !!iv });
@@ -1341,7 +1390,7 @@ const Mensajes: React.FC = () => {
     const insertObj: Record<string, unknown> = { group_id: gId, sender_id: myUserId, content: content || '' };
     if (mediaUrl) { insertObj.media_url = mediaUrl; insertObj.media_type = mediaType ?? null; }
     if (isGroupLocation) { insertObj.media_type = 'location'; }
-    const { error } = await supabase.from('group_messages').insert(insertObj as any);
+    const { error } = await supabase.from('group_messages').insert(insertObj as never);
     if (error) { toast.error('Error al enviar'); return; }
     await supabase.from('groups').update({
       last_message: isGroupLocation ? '\uD83D\uDCCD Ubicacion' : (content || '\uD83D\uDCCE Archivo'),
@@ -1353,8 +1402,8 @@ const Mensajes: React.FC = () => {
       const groupName = activeGroupInfo?.name || 'Grupo';
       for (const member of membersData) {
         sendPushNotification({
-          targetUserId: member.user_id, type: 'message', title: `${groupName}`,
-          body: `${str(myProfile?.full_name, 'Usuario')}: ${content ? content.slice(0, 80) : '📩 Nuevo mensaje'}`,
+          targetUserId: member.user_id, type: 'message', title: groupName,
+          body: `${str(myProfile?.full_name, 'Usuario')}: ${content ? content.slice(0, 80) : '\uD83D\uDCE9 Nuevo mensaje'}`,
           fromUserId: myUserId, avatarUrl: myProfile?.avatar_url || null,
         }).catch(() => {});
       }
@@ -1362,13 +1411,12 @@ const Mensajes: React.FC = () => {
     trackEvent('message_sent', { type: mediaType || 'text', group: true, mentions: mentionedUsernames.length });
   }, [myUserId, activeGroupId, activeGroupInfo, trackEvent, myProfile, chatDrafts, mentions]);
 
-  // ──────────────────────────────
+     // ──────────────────────────────
   // START CONVERSATION / CREATE GROUP
   // ──────────────────────────────
 
   const handleStartConversation = useCallback(async (otherUserId: string) => {
-    if (!myUserId) return;
-    if (!isValidUUID(otherUserId)) { toast.error('ID de usuario invalido'); return; }
+    if (!myUserId || !isValidUUID(otherUserId)) { toast.error('ID de usuario invalido'); return; }
     try {
       const { data: existing } = await supabase.from('conversations').select('id')
         .or(`and(user_1.eq.${myUserId},user_2.eq.${otherUserId}),and(user_1.eq.${otherUserId},user_2.eq.${myUserId})`)
@@ -1379,7 +1427,7 @@ const Mensajes: React.FC = () => {
         .select('id').single();
       if (error || !newConv) { toast.error('Error al crear chat'); return; }
       setShowNewChat(false); search.clear();
-      await reloadConversations(); handleSelectConversation(newConv.id);
+            await reloadConversations(); if (newConv.id) handleSelectConversation(newConv.id);
     } catch (err) {
       console.error('[Mensajes] start conversation error:', err);
       toast.error('Error al iniciar conversacion');
@@ -1390,9 +1438,11 @@ const Mensajes: React.FC = () => {
     const targetId = locState.contactUserId;
     if (!targetId || !myUserId || targetId === myUserId) return;
     if (!isValidUUID(targetId)) return;
+    const safeUserId: string = myUserId;
+    const safeTargetId: string = targetId;
     (async () => {
       try {
-        const convId = await findOrCreateConversation(myUserId, targetId);
+        const convId = await findOrCreateConversation(safeUserId, safeTargetId);
         if (convId) {
           await reloadConversations();
           handleSelectConversation(convId);
@@ -1413,7 +1463,7 @@ const Mensajes: React.FC = () => {
         created_by: myUserId, last_message_at: new Date().toISOString(),
       };
       if (newGroupAvatar) insertData.avatar_url = newGroupAvatar;
-      const { data: newGroup, error } = await supabase.from('groups').insert(insertData as any).select('id').single();
+      const { data: newGroup, error } = await supabase.from('groups').insert(insertData as never).select('id').single();
       if (error || !newGroup) { toast.error('Error al crear grupo'); return; }
       await supabase.from('group_members').insert({ group_id: newGroup.id, user_id: myUserId, role: 'owner' });
       setShowNewGroup(false); setNewGroupName(''); setNewGroupDesc(''); setNewGroupAvatar(null);
@@ -1425,7 +1475,7 @@ const Mensajes: React.FC = () => {
   }, [myUserId, newGroupName, newGroupDesc, newGroupAvatar, reloadGroups, handleSelectGroup]);
 
   const handleAddMemberToGroup = useCallback(async (userId: string) => {
-    if (!activeGroupId) return;
+    if (!activeGroupId || !isValidUUID(userId)) return;
     const gId = activeGroupId;
     try {
       const { error } = await supabase.from('group_members').insert({ group_id: gId, user_id: userId, role: 'member' });
@@ -1435,9 +1485,8 @@ const Mensajes: React.FC = () => {
       console.error('[Groups] add member error:', err);
       toast.error('Error al agregar miembro');
     }
-  }, [activeGroupId, loadGroupMessages, search]);
-
-  // ──────────────────────────────
+  }, [activeGroupId, loadGroupMessages, search]); 
+   // ──────────────────────────────
   // BLOCK / REPORT / MUTE / DELETE
   // ──────────────────────────────
 
@@ -1462,35 +1511,37 @@ const Mensajes: React.FC = () => {
 
   const handleReport = useCallback(async (category: string, reason: string) => {
     if (!myUserId || !activeOtherUserId) return;
+    if (!reportRateLimiter()) { toast.error('Espera antes de reportar de nuevo'); return; }
     const targetId = activeOtherUserId;
     const safeCategory = sanitizeReportCategory(category);
     const safeReason = (reason || '').trim().slice(0, 500);
 
     try {
-      await (supabase.from('reported_users' as any).insert as any)({ reporter_id: myUserId, reported_id: targetId, reason: '[' + safeCategory + '] ' + safeReason, status: 'pending' });
+      await untypedFrom('reported_users').insert({ reporter_id: myUserId, reported_id: targetId, reason: '[' + safeCategory + '] ' + safeReason, status: 'pending' });
       try { await supabase.from('blocked_users').insert({ blocker_id: myUserId, blocked_id: targetId }); } catch { /* may already be blocked */ }
       setBlockedIds(prev => new Set(prev).add(targetId));
 
       const { data: reportedProfile } = await supabase.from('profiles').select('full_name, username, avatar_url').eq('id', targetId).single();
-      const reportedName = (reportedProfile as any)?.full_name || (reportedProfile as any)?.username || 'Usuario';
+      const rp = reportedProfile as Record<string, unknown> | null;
+      const reportedName = str(rp?.full_name as string | null, str(rp?.username as string | null, 'Usuario'));
 
       const contactIds = new Set<string>();
       const { data: convs1 } = await supabase.from('conversations').select('user_1, user_2').eq('user_1', targetId);
       const { data: convs2 } = await supabase.from('conversations').select('user_1, user_2').eq('user_2', targetId);
-      (convs1 || []).forEach((c: any) => { if (c.user_2 !== myUserId) contactIds.add(c.user_2); });
-      (convs2 || []).forEach((c: any) => { if (c.user_1 !== myUserId) contactIds.add(c.user_1); });
+      (convs1 || []).forEach((c: Record<string, unknown>) => { if (c.user_2 !== myUserId) contactIds.add(c.user_2 as string); });
+      (convs2 || []).forEach((c: Record<string, unknown>) => { if (c.user_1 !== myUserId) contactIds.add(c.user_1 as string); });
 
       const { data: targetGroups } = await supabase.from('group_members').select('group_id').eq('user_id', targetId);
       if (targetGroups && targetGroups.length > 0) {
-        const gIds = targetGroups.map((g: any) => g.group_id);
+        const gIds = targetGroups.map((g: Record<string, unknown>) => g.group_id as string);
         const { data: sharedMembers } = await supabase.from('group_members').select('user_id').in('group_id', gIds);
-        (sharedMembers || []).forEach((mm: any) => { if (mm.user_id !== myUserId && mm.user_id !== targetId) contactIds.add(mm.user_id); });
+        (sharedMembers || []).forEach((mm: Record<string, unknown>) => { if (mm.user_id !== myUserId && mm.user_id !== targetId) contactIds.add(mm.user_id as string); });
       }
 
-      const { data: allReports } = await (supabase.from('reported_users' as any).select('id') as any).eq('reported_id', targetId);
+      const { data: allReports } = await untypedFrom('reported_users').select('id').eq('reported_id', targetId);
       const totalReports = (allReports || []).length;
 
-      const alertPayload = { type: 'user_reported', reportedUserId: targetId, reportedName, reportedAvatar: (reportedProfile as any)?.avatar_url || null, reportedUsername: (reportedProfile as any)?.username || null, category: safeCategory, totalReports, reportedAt: new Date().toISOString() };
+      const alertPayload = { type: 'user_reported', reportedUserId: targetId, reportedName, reportedAvatar: rp?.avatar_url || null, reportedUsername: rp?.username || null, category: safeCategory, totalReports };
 
       for (const cid of contactIds) {
         const ch = supabase.channel('report-alert:' + cid + ':' + Date.now());
@@ -1500,11 +1551,11 @@ const Mensajes: React.FC = () => {
             setTimeout(() => supabase.removeChannel(ch), 3000);
           }
         });
-        sendPushNotification({ targetUserId: cid, type: 'message', title: 'Alerta de seguridad', body: reportedName + ' ha sido reportado. ' + totalReports + ' reporte(s).', fromUserId: myUserId, avatarUrl: (reportedProfile as any)?.avatar_url || null }).catch(() => {});
+        sendPushNotification({ targetUserId: cid, type: 'message', title: 'Alerta de seguridad', body: reportedName + ' ha sido reportado. ' + totalReports + ' reporte(s).', fromUserId: myUserId, avatarUrl: null }).catch(() => {});
       }
 
       if (totalReports >= 3) {
-        try { await (supabase.from('profiles') as any).update({ is_banned: true }).eq('id', targetId); } catch { /* best-effort ban */ }
+        try { await untypedFrom('profiles').update({ is_banned: true }).eq('id', targetId); } catch { /* best-effort ban */ }
         try { await supabase.from('group_members').delete().eq('user_id', targetId); } catch { /* best-effort removal */ }
       }
 
@@ -1515,7 +1566,7 @@ const Mensajes: React.FC = () => {
       console.error('[Report] error:', err);
       toast.error('Error al reportar usuario');
     }
-  }, [myUserId, activeOtherUserId, trackEvent, myProfile]);
+  }, [myUserId, activeOtherUserId, trackEvent, reportRateLimiter]);
 
   const handleMute = useCallback(async () => {
     if (!activeConvId) return;
@@ -1553,6 +1604,7 @@ const Mensajes: React.FC = () => {
   }, [activeConvId, reloadConversations, setMessages, chatDrafts]);
 
   const handleClearConversation = useCallback(async (convId: string) => {
+    if (!isValidUUID(convId)) return;
     setConfirmDialog({
       open: true, title: 'Limpiar chat',
       description: 'Se eliminaran todos los mensajes pero el chat se mantendra.',
@@ -1570,6 +1622,7 @@ const Mensajes: React.FC = () => {
   }, [activeConvId, reloadConversations, setMessages]);
 
   const handleDeleteConversationFromSidebar = useCallback(async (convId: string) => {
+    if (!isValidUUID(convId)) return;
     setConfirmDialog({
       open: true, title: 'Eliminar conversacion',
       description: 'Se eliminara la conversacion y todos los mensajes permanentemente.',
@@ -1588,6 +1641,7 @@ const Mensajes: React.FC = () => {
   }, [activeConvId, reloadConversations, setMessages, chatDrafts]);
 
   const handleClearGroup = useCallback(async (groupId: string) => {
+    if (!isValidUUID(groupId)) return;
     setConfirmDialog({
       open: true, title: 'Limpiar grupo',
       description: 'Se eliminaran todos los mensajes pero el grupo se mantendra.',
@@ -1605,6 +1659,7 @@ const Mensajes: React.FC = () => {
   }, [activeGroupId, reloadGroups]);
 
   const handleDeleteGroupFromSidebar = useCallback(async (groupId: string) => {
+    if (!isValidUUID(groupId)) return;
     setConfirmDialog({
       open: true, title: 'Eliminar grupo',
       description: 'Se eliminara el grupo y todos sus mensajes permanentemente.',
@@ -1624,14 +1679,15 @@ const Mensajes: React.FC = () => {
   }, [activeGroupId, reloadGroups, chatDrafts]);
 
   const handleRemoveMember = useCallback(async (userId: string) => {
-    if (!activeGroupId) return;
+    if (!activeGroupId || !isValidUUID(userId)) return;
     const gId = activeGroupId;
     setConfirmDialog({
       open: true, title: 'Expulsar miembro', description: 'Este usuario sera removido del grupo.', variant: 'warning',
       onConfirm: async () => {
         try {
-          await supabase.from('group_members').delete().eq('group_id', gId).eq('user_id', userId);
-          toast.success('Miembro expulsado'); loadGroupMessages(gId);
+          const { error } = await supabase.from('group_members').delete().eq('group_id', gId).eq('user_id', userId);
+          if (error) { toast.error('Error al expulsar: ' + error.message); } else { toast.success('Miembro expulsado'); }
+          loadGroupMessages(gId);
         } catch (err) { console.error('[Groups] remove member error:', err); toast.error('Error al expulsar'); }
         setConfirmDialog(prev => ({ ...prev, open: false }));
       },
@@ -1639,16 +1695,30 @@ const Mensajes: React.FC = () => {
   }, [activeGroupId, loadGroupMessages]);
 
   const handlePromoteMember = useCallback(async (userId: string, role: 'admin' | 'moderator' | 'member') => {
-    if (!activeGroupId) return;
+    if (!activeGroupId || !isValidUUID(userId)) return;
+    if (!promoteRateLimiter()) { toast.error('Espera antes de cambiar rol de nuevo'); return; }
+    const gId = activeGroupId;
     try {
-      const { error } = await supabase.from('group_members').update({ role }).eq('group_id', activeGroupId).eq('user_id', userId);
-      if (error) { toast.error('Error al cambiar rol'); return; }
-      toast.success(role === 'admin' ? 'Promovido a admin' : role === 'moderator' ? 'Promovido a moderador' : 'Rol cambiado'); loadGroupMessages(activeGroupId);
+      const { error } = await supabase.from('group_members')
+        .update({ role })
+        .eq('group_id', gId)
+        .eq('user_id', userId);
+      if (error) {
+        console.error('[Groups] promote error:', error.message, error.code, error.details);
+        toast.error('Error al cambiar rol: ' + (error.message || 'desconocido'));
+        return;
+      }
+      toast.success(
+        role === 'admin' ? 'Promovido a admin'
+        : role === 'moderator' ? 'Promovido a moderador'
+        : 'Rol removido'
+      );
+      loadGroupMessages(gId);
     } catch (err) {
-      console.error('[Groups] promote error:', err);
-      toast.error('Error al promover');
+      console.error('[Groups] promote critical error:', err);
+      toast.error('Error al cambiar rol');
     }
-  }, [activeGroupId, loadGroupMessages]);
+  }, [activeGroupId, loadGroupMessages, promoteRateLimiter]);
 
   const handleLeaveGroup = useCallback(() => {
     if (!activeGroupId || !myUserId) return;
@@ -1690,8 +1760,12 @@ const Mensajes: React.FC = () => {
   const handleEditGroup = useCallback(async (name: string, description: string) => {
     if (!activeGroupId) return;
     try {
-      const { error } = await supabase.from('groups').update({ name: name.slice(0, MAX_GROUP_NAME_LENGTH), description: description.slice(0, MAX_GROUP_DESC_LENGTH), updated_at: new Date().toISOString() }).eq('id', activeGroupId);
-      if (error) { toast.error('Error al editar grupo'); return; }
+      const { error } = await supabase.from('groups').update({
+        name: name.slice(0, MAX_GROUP_NAME_LENGTH),
+        description: description.slice(0, MAX_GROUP_DESC_LENGTH),
+        updated_at: new Date().toISOString(),
+      }).eq('id', activeGroupId);
+      if (error) { toast.error('Error al editar grupo: ' + error.message); return; }
       loadGroupMessages(activeGroupId);
     } catch (err) { console.error('[Groups] edit error:', err); toast.error('Error al editar'); }
   }, [activeGroupId, loadGroupMessages]);
@@ -1699,21 +1773,28 @@ const Mensajes: React.FC = () => {
   const handleEditGroupAvatar = useCallback(async (avatarUrl: string) => {
     if (!activeGroupId) return;
     try {
-      await supabase.from('groups').update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() } as any).eq('id', activeGroupId);
-      setActiveGroupInfo(prev => prev ? { ...prev, avatarUrl: avatarUrl } as GroupInfo : null);
+      await supabase.from('groups').update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() } as never).eq('id', activeGroupId);
+      setActiveGroupInfo(prev => prev ? { ...prev, avatarUrl } as GroupInfo : null);
       toast.success('Avatar de grupo actualizado');
     } catch (err) { console.error('[Groups] avatar edit error:', err); toast.error('Error al actualizar avatar'); }
   }, [activeGroupId]);
 
   const handleForwardToDm = useCallback(async (targetConvId: string) => {
-    if (!myUserId || !forwardingMessage) return;
+    if (!myUserId || !forwardingMessage || !isValidUUID(targetConvId)) return;
     try {
       const fwdIsLocation = forwardingMessage.mediaType === 'location' || (() => { try { const p = JSON.parse(forwardingMessage.content); return typeof p.lat === 'number' && typeof p.lng === 'number'; } catch { return false; } })();
-      const { error } = await supabase.from('private_messages').insert({
-        conversation_id: targetConvId, sender_id: myUserId, content: forwardingMessage.content || '',
+      // Look up the conversation to determine receiver_id
+      const { data: convData } = await supabase.from('conversations').select('user_1, user_2').eq('id', targetConvId).single();
+const rawReceiver = convData ? (convData.user_1 === myUserId ? convData.user_2 : convData.user_1) : null;
+const fwdReceiverId: string = rawReceiver ?? myUserId ?? '';
+      const fwdPayload: Record<string, unknown> = {
+        chat_id: targetConvId, conversation_id: targetConvId, sender_id: myUserId,
+        receiver_id: fwdReceiverId,
+        content: forwardingMessage.content || '',
         media_url: forwardingMessage.mediaUrl ?? null, media_type: fwdIsLocation ? 'location' : (forwardingMessage.mediaType ?? null),
         is_read: false, is_forwarded: true, reply_to: null,
-      });
+      };
+      const { error } = await supabase.from('private_messages').insert(fwdPayload as never);
       if (error) { toast.error('Error al reenviar'); return; }
       await supabase.from('conversations').update({
         last_message: fwdIsLocation ? '\u21AA \uD83D\uDCCD Ubicacion' : '\u21AA ' + (forwardingMessage.content || '\uD83D\uDCCE Archivo'), last_message_at: new Date().toISOString(),
@@ -1723,13 +1804,13 @@ const Mensajes: React.FC = () => {
   }, [myUserId, forwardingMessage]);
 
   const handleForwardToGroup = useCallback(async (targetGroupId: string) => {
-    if (!myUserId || !forwardingMessage) return;
+    if (!myUserId || !forwardingMessage || !isValidUUID(targetGroupId)) return;
     try {
       const fwdIsLocation = forwardingMessage.mediaType === 'location' || (() => { try { const p = JSON.parse(forwardingMessage.content); return typeof p.lat === 'number' && typeof p.lng === 'number'; } catch { return false; } })();
       const fwdObj: Record<string, unknown> = { group_id: targetGroupId, sender_id: myUserId, content: forwardingMessage.content || '' };
       if (forwardingMessage.mediaUrl) { fwdObj.media_url = forwardingMessage.mediaUrl; fwdObj.media_type = fwdIsLocation ? 'location' : (forwardingMessage.mediaType ?? null); }
       if (fwdIsLocation && !forwardingMessage.mediaUrl) { fwdObj.media_type = 'location'; }
-      const { error } = await supabase.from('group_messages').insert(fwdObj as any);
+      const { error } = await supabase.from('group_messages').insert(fwdObj as never);
       if (error) { toast.error('Error al reenviar'); return; }
       await supabase.from('groups').update({
         last_message: fwdIsLocation ? '\u21AA \uD83D\uDCCD Ubicacion' : '\u21AA ' + (forwardingMessage.content || '\uD83D\uDCCE Archivo'), last_message_at: new Date().toISOString(),
@@ -1794,7 +1875,8 @@ const Mensajes: React.FC = () => {
     archivedChats.showArchived ? groups : groups.filter(g => !archivedChats.isArchived(g.id, 'group')),
     [groups, archivedChats]
   );
-    // ──────────────────────────────
+
+  // ──────────────────────────────
   // RENDER
   // ──────────────────────────────
 
@@ -1848,12 +1930,11 @@ const Mensajes: React.FC = () => {
           chatLock={chatLock}
           blockedIds={blockedIds}
           setBlockedIds={setBlockedIds}
+          onTriggerTutorial={triggerTutorial}
         />
-
-      {/* Tutorial overlay — triggered from settings */}
-      {showTutorial && <AppTutorial onComplete={dismissTutorial} />}
-
       )}
+
+      {showTutorial && <AppTutorial onComplete={dismissTutorial} />}
 
       {showGroupInviteModal && activeGroupId && activeGroupInfo && (
         <GroupInviteModal
@@ -1880,24 +1961,25 @@ const Mensajes: React.FC = () => {
         onLoadMedia={sharedMedia.loadMedia}
         onClose={() => { setShowSharedMedia(false); sharedMedia.clear(); }}
       />
-{/* ── New Chat Modal ── (replace the old 30-line block with this) */}
-{showNewChat && myUserId && (
-  <NewChatModal
-    userId={myUserId}
-    search={search}
-    onStartConversation={handleStartConversation}
-    onClose={() => setShowNewChat(false)}
-    MC={MC}
-  />
-)}
 
-      {/* ── New Group Modal ── */}
+      {showNewChat && myUserId && (
+        <NewChatModal
+          userId={myUserId}
+          search={search}
+          onStartConversation={handleStartConversation}
+          onClose={() => setShowNewChat(false)}
+          MC={MC}
+        />
+      )}
+
       {showNewGroup && (
         <div style={{ position: 'fixed', inset: 0, background: MC.overlay, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: MC.sidebar, borderRadius: '16px', width: '100%', maxWidth: '420px', padding: '20px', border: `1px solid ${MC.border}`, boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontWeight: 700, fontSize: '16px', color: MC.text }}>Nuevo Grupo</span>
-              <button onClick={() => { setShowNewGroup(false); setNewGroupAvatar(null); }} style={{ background: 'none', border: 'none', color: MC.textMuted, cursor: 'pointer', fontSize: '18px' }}>{'\u2715'}</button>
+              <button onClick={() => { setShowNewGroup(false); setNewGroupAvatar(null); }} style={{ background: 'none', border: 'none', color: MC.textMuted, cursor: 'pointer', padding: '4px' }}>
+                <XIcon size={18} />
+              </button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <GroupAvatarPicker avatarUrl={newGroupAvatar} onAvatarSelected={(url) => setNewGroupAvatar(url)} />
@@ -1911,7 +1993,7 @@ const Mensajes: React.FC = () => {
                 <label style={{ fontSize: '13px', color: MC.textMuted, marginBottom: '4px', display: 'block' }}>Descripcion (opcional)</label>
                 <textarea value={newGroupDesc} onChange={(e) => setNewGroupDesc(e.target.value.slice(0, MAX_GROUP_DESC_LENGTH))} rows={3} placeholder="Descripcion del grupo..."
                   maxLength={MAX_GROUP_DESC_LENGTH}
-                  style={{ width: '100%', padding: '10px 14px', background: MC.inputBg, border: `1px solid ${MC.border}`, borderRadius: '8px', color: MC.text, fontSize: '14px', outline: 'none', resize: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '10px 14px', background: MC.inputBg, border: `1px solid ${MC.border}`, borderRadius: '8px', color: MC.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
               </div>
               <button onClick={handleCreateGroup} style={{ padding: '10px', background: MC.blue, border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>Crear Grupo</button>
             </div>
@@ -1919,13 +2001,14 @@ const Mensajes: React.FC = () => {
         </div>
       )}
 
-      {/* ── Add Member Modal ── */}
       {showAddMember && (
         <div style={{ position: 'fixed', inset: 0, background: MC.overlay, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div style={{ background: MC.sidebar, borderRadius: '16px', width: '100%', maxWidth: '420px', maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: `1px solid ${MC.border}`, boxShadow: '0 16px 48px rgba(0,0,0,0.15)' }}>
             <div style={{ padding: '16px', borderBottom: `1px solid ${MC.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 700, fontSize: '16px', color: MC.text }}>Agregar Miembro</span>
-              <button onClick={() => { setShowAddMember(false); search.clear(); }} style={{ background: 'none', border: 'none', color: MC.textMuted, cursor: 'pointer', fontSize: '18px' }}>{'\u2715'}</button>
+              <button onClick={() => { setShowAddMember(false); search.clear(); }} style={{ background: 'none', border: 'none', color: MC.textMuted, cursor: 'pointer', padding: '4px' }}>
+                <XIcon size={18} />
+              </button>
             </div>
             <div style={{ padding: '12px 16px' }}>
               <input type="text" placeholder="Buscar usuario..." value={search.query} onChange={(e) => search.setQuery(e.target.value)} autoFocus
@@ -1933,11 +2016,11 @@ const Mensajes: React.FC = () => {
                 style={{ width: '100%', padding: '10px 14px', background: MC.inputBg, border: `1px solid ${MC.border}`, borderRadius: '8px', color: MC.text, fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
-              {search.results.map((p: any) => (
+              {search.results.map((p) => (
                 <div key={p.user_id} onClick={() => handleAddMemberToGroup(p.user_id)}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', transition: 'background 0.15s' }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = MC.sidebarHover)} onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: MC.sidebarActive, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, overflow: 'hidden', flexShrink: 0, color: MC.blue }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: MC.sidebarActive, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: MC.textMuted, overflow: 'hidden' }}>
                     {p.avatar_url ? <img src={p.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : str(p.full_name, '?').charAt(0).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1951,7 +2034,7 @@ const Mensajes: React.FC = () => {
         </div>
       )}
 
-      <ForwardModal open={!!forwardingMessage} messagePreview={forwardingMessage ? (forwardingMessage.mediaType === 'location' ? '\uD83D\uDCCD Ubicacion' : forwardingMessage.mediaUrl ? '\uD83D\uDCCE Archivo' : forwardingMessage.content) : ''}
+      <ForwardModal open={!!forwardingMessage} messagePreview={forwardingMessage ? (forwardingMessage.mediaType === 'location' ? '\uD83D\uDCCD Ubicacion' : forwardingMessage.mediaUrl ? '\uD83D\uDCCE Archivo' : forwardingMessage.content?.slice(0, 60) || '') : ''}
         conversations={conversations} groups={groups} currentConvId={activeConvId}
         onForwardToDm={handleForwardToDm} onForwardToGroup={handleForwardToGroup} onClose={() => setForwardingMessage(null)} />
 
@@ -1960,7 +2043,6 @@ const Mensajes: React.FC = () => {
 
       <ReportDialog open={reportDialog.open} userName={reportDialog.userName} onSubmit={(cat: string, reason: string) => handleReport(cat, reason)} onCancel={() => setReportDialog({ open: false, userName: '' })} />
 
-      {/* ── DM Chat Window ── */}
       {activeConvId && (
         <ErrorBoundary>
           <ChatWindow
@@ -2042,10 +2124,10 @@ const Mensajes: React.FC = () => {
             paymentRequests={paymentRequests}
             otherUserName={activeOtherProfile?.full_name || undefined}
             onScheduleSend={activeConvId ? (content, sendAt) => {
-              (supabase.from('scheduled_messages' as any).insert({
+              untypedFrom('scheduled_messages').insert({
                 user_id: myUserId, content, send_at: sendAt.toISOString(),
                 conversation_id: activeConvId, group_id: null,
-              } as any) as any)
+              })
                 .then(() => toast.success('Mensaje programado para ' + sendAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })))
                 .catch((err: unknown) => { console.error('[Schedule] error:', err); toast.error('Error al programar mensaje'); });
             } : undefined}
@@ -2089,7 +2171,6 @@ const Mensajes: React.FC = () => {
         />
       )}
 
-      {/* ── Group Chat Window ── */}
       {activeGroupId && activeGroupInfo && (
         <GroupChatWindow
           currentUserId={myProfile.user_id} group={activeGroupInfo} members={groupMembers} messages={groupMessages}
@@ -2141,7 +2222,6 @@ const Mensajes: React.FC = () => {
         </div>
       )}
 
-      {/* ── Reminder Alert Popup ── */}
       <ReminderAlert
         reminder={reminders.activeAlert}
         onDismiss={reminders.dismissReminder}
@@ -2152,7 +2232,6 @@ const Mensajes: React.FC = () => {
         }}
       />
 
-      {/* ── Payment Request Modal ── */}
       <PaymentRequestModal
         open={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
@@ -2176,7 +2255,6 @@ const Mensajes: React.FC = () => {
         recipientName={activeOtherProfile?.full_name || undefined}
       />
 
-      {/* ── Wallpaper Picker ── */}
       {(activeConvId || activeGroupId) && (
         <WallpaperPicker
           open={showWallpaperPicker}
@@ -2187,7 +2265,6 @@ const Mensajes: React.FC = () => {
         />
       )}
 
-      {/* ── Reminder Creator Modal ── */}
       <ReminderModal
         open={showReminderModal}
         onClose={() => setShowReminderModal(false)}
@@ -2199,7 +2276,6 @@ const Mensajes: React.FC = () => {
         chatName={activeOtherProfile?.full_name || activeGroupInfo?.name || undefined}
       />
 
-      {/* ── Empty State ── */}
       {!activeConvId && !activeGroupId && (
         <div className={`mensajes-main ${showMobile === 'sidebar' ? 'hidden-mobile' : ''}`}>
           <div className="mensajes-main-empty">
