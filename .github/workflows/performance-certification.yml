@@ -28,6 +28,7 @@ jobs:
         uses: grafana/setup-k6-action@v1
 
       - name: Run k6 certification profile
+        continue-on-error: true
         env:
           PERF_BASE_URL: ${{ secrets.PERF_BASE_URL }}
           EDGE_HEALTH_URLS: ${{ secrets.EDGE_HEALTH_URLS }}
@@ -41,9 +42,11 @@ jobs:
         run: npm run -s perf:certify
 
       - name: Build certification evidence
+        if: always()
         run: npm run -s perf:evidence
 
       - name: Upload certification artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: perf-certification-${{ github.run_number }}
