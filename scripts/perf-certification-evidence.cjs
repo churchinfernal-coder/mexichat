@@ -20,15 +20,70 @@ function loadJson(filePath) {
 }
 
 function getMetricValue(metrics, metricName, valueName, fallback = null) {
-  return metrics?.[metricName]?.values?.[valueName] ?? fallback;
+  const metric = metrics?.[metricName];
+  if (!metric) return fallback;
+  if (Object.prototype.hasOwnProperty.call(metric, valueName)) {
+    return metric[valueName];
+  }
+  if (metric.values && Object.prototype.hasOwnProperty.call(metric.values, valueName)) {
+    return metric.values[valueName];
+  }
+  // In recent k6 exports, rate-like metrics use `value`.
+  if (valueName === 'rate' && Object.prototype.hasOwnProperty.call(metric, 'value')) {
+    return metric.value;
+  }
+  return fallback;
+}
+
+function evaluateComparator(left, operator, right) {
+  switch (operator) {
+    case '<': return left < right;
+    case '<=': return left <= right;
+    case '>': return left > right;
+    case '>=': return left >= right;
+    default: return null;
+  }
+}
+
+function evaluateThreshold(metrics, metricName, thresholdExpr) {
+  const rateMatch = thresholdExpr.match(/^rate\s*(<=|>=|<|>)\s*([0-9]*\.?[0-9]+)$/);
+  if (rateMatch) {
+    const [, operator, valueRaw] = rateMatch;
+    const left = getMetricValue(metrics, metricName, 'rate', null);
+    const right = Number(valueRaw);
+    if (typeof left === 'number' && Number.isFinite(left) && Number.isFinite(right)) {
+      return evaluateComparator(left, operator, right);
+    }
+    return null;
+  }
+
+  const percentileMatch = thresholdExpr.match(/^p\((\d+)\)\s*(<=|>=|<|>)\s*([0-9]*\.?[0-9]+)$/);
+  if (percentileMatch) {
+    const [, percentileRaw, operator, valueRaw] = percentileMatch;
+    const key = `p(${percentileRaw})`;
+    const left = getMetricValue(metrics, metricName, key, null);
+    const right = Number(valueRaw);
+    if (typeof left === 'number' && Number.isFinite(left) && Number.isFinite(right)) {
+      return evaluateComparator(left, operator, right);
+    }
+    return null;
+  }
+
+  return null;
 }
 
 function collectThresholds(metrics) {
   const rows = [];
   for (const [metricName, metric] of Object.entries(metrics || {})) {
     const thresholds = metric?.thresholds || {};
-    for (const [thresholdExpr, passed] of Object.entries(thresholds)) {
-      rows.push({ metric: metricName, threshold: thresholdExpr, passed: Boolean(passed) });
+    for (const [thresholdExpr, rawStatus] of Object.entries(thresholds)) {
+      const computed = evaluateThreshold(metrics, metricName, thresholdExpr);
+      const passed = typeof computed === 'boolean' ? computed : Boolean(rawStatus);
+      rows.push({
+        metric: metricName,
+        threshold: thresholdExpr,
+        passed,
+      });
     }
   }
   return rows;

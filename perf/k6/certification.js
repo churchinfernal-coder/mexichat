@@ -48,6 +48,7 @@ const stage4Duration = parseDurationEnv('PERF_STAGE4_DURATION', '2m');
 
 export const options = {
   discardResponseBodies: true,
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
   scenarios: {
     certification: {
       executor: 'ramping-vus',
