@@ -5,12 +5,71 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://cchakgecusfybcokbmau.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjaGFrZ2VjdXNmeWJjb2tibWF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzOTA3NDksImV4cCI6MjA4Mzk2Njc0OX0.TWy1NmGHFDzBSJi3-z1k4f8_bkoxP94NPBUqOrGyGb8";
 
+type SupabaseStorage = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+};
+
+const inMemoryAuthStore = new Map<string, string>();
+
+function clearLegacyLocalAuthArtifacts(): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (!key) continue;
+      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => {
+      window.localStorage.removeItem(key);
+    });
+  } catch {
+    // Ignore browsers/environments with restricted storage access.
+  }
+}
+
+function createAuthStorage(): SupabaseStorage {
+  if (typeof window === 'undefined') {
+    return {
+      getItem: (key) => inMemoryAuthStore.get(key) ?? null,
+      setItem: (key, value) => { inMemoryAuthStore.set(key, value); },
+      removeItem: (key) => { inMemoryAuthStore.delete(key); },
+    };
+  }
+
+  try {
+    const testKey = '__mc_auth_storage_probe__';
+    window.sessionStorage.setItem(testKey, '1');
+    window.sessionStorage.removeItem(testKey);
+    return window.sessionStorage;
+  } catch {
+    return {
+      getItem: (key) => inMemoryAuthStore.get(key) ?? null,
+      setItem: (key, value) => { inMemoryAuthStore.set(key, value); },
+      removeItem: (key) => { inMemoryAuthStore.delete(key); },
+    };
+  }
+}
+
+const authStorage = createAuthStorage();
+clearLegacyLocalAuthArtifacts();
+
+export function clearSupabaseAuthArtifacts(): void {
+  clearLegacyLocalAuthArtifacts();
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: authStorage,
     persistSession: true,
     autoRefreshToken: true,
   }

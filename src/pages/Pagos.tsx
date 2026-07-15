@@ -6,7 +6,7 @@ import {
   CreditCard, Store, Loader2,
 } from 'lucide-react';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://cchakgecusfybcokbmau.supabase.co';
+const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || 'https://cchakgecusfybcokbmau.supabase.co';
 const SERVICE_FEE_MXN = 5;
 const MIN_AMOUNT = 10;
 const MAX_AMOUNT = 500000;
@@ -63,11 +63,11 @@ export default function Pagos() {
   }, []);
 
   const validateForm = useCallback((): string | null => {
-    if (!user) return 'Inicia sesión primero';
-    if (!amount || parsedAmount < MIN_AMOUNT) return `Monto mínimo: $${MIN_AMOUNT} MXN`;
-    if (parsedAmount > MAX_AMOUNT) return `Monto máximo: $${MAX_AMOUNT.toLocaleString('es-MX')} MXN`;
+    if (!user) return 'Inicia sesion primero';
+    if (!amount || parsedAmount < MIN_AMOUNT) return `Monto minimo: $${MIN_AMOUNT} MXN`;
+    if (parsedAmount > MAX_AMOUNT) return `Monto maximo: $${MAX_AMOUNT.toLocaleString('es-MX')} MXN`;
     if (provider === 'oxxo' && parsedAmount > MAX_OXXO) {
-      return `Monto máximo para OXXO: $${MAX_OXXO.toLocaleString('es-MX')} MXN`;
+      return `Monto maximo para OXXO: $${MAX_OXXO.toLocaleString('es-MX')} MXN`;
     }
     return null;
   }, [user, amount, parsedAmount, provider]);
@@ -88,7 +88,7 @@ export default function Pagos() {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !sessionData?.session?.access_token) {
-        setFormError('Sesión expirada. Inicia sesión de nuevo.');
+        setFormError('Sesion expirada. Inicia sesion de nuevo.');
         return;
       }
 
@@ -126,10 +126,10 @@ export default function Pagos() {
       if (checkoutUrl && typeof checkoutUrl === 'string') {
         window.location.href = checkoutUrl;
       } else {
-        setFormError('No se recibió URL de pago válida');
+        setFormError('No se recibio URL de pago valida');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Error de conexión. Intenta de nuevo.';
+      const message = err instanceof Error ? err.message : 'Error de conexion. Intenta de nuevo.';
       setFormError(message);
     } finally {
       setSubmitting(false);
@@ -214,7 +214,7 @@ export default function Pagos() {
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-6">
         <CreditCard className="w-16 h-16 text-blue-500 mb-4" />
         <h2 className="text-xl font-bold mb-2">Pagos MexiChat</h2>
-        <p className="text-gray-500">Inicia sesión para usar pagos</p>
+        <p className="text-gray-500">Inicia sesion para usar pagos</p>
       </div>
     );
   }
@@ -278,8 +278,8 @@ export default function Pagos() {
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                Mínimo ${MIN_AMOUNT} MXN
-                {provider === 'oxxo' && ` · Máximo $${MAX_OXXO.toLocaleString('es-MX')} OXXO`}
+                Minimo ${MIN_AMOUNT} MXN
+                {provider === 'oxxo' && ` - Maximo $${MAX_OXXO.toLocaleString('es-MX')} OXXO`}
               </p>
             </div>
 
@@ -300,7 +300,7 @@ export default function Pagos() {
             </div>
 
             <fieldset>
-              <legend className="block text-sm font-semibold text-gray-700 mb-1">Método de pago</legend>
+              <legend className="block text-sm font-semibold text-gray-700 mb-1">Metodo de pago</legend>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -351,7 +351,7 @@ export default function Pagos() {
                   <span>${formatCurrency(parsedAmount)}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
-                  <span>Comisión de servicio:</span>
+                  <span>Comision de servicio:</span>
                   <span>${formatCurrency(SERVICE_FEE_MXN)}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-gray-800 pt-1 border-t border-gray-200">
@@ -381,7 +381,7 @@ export default function Pagos() {
             </button>
 
             <p className="text-xs text-gray-400 text-center">
-              Comisión fija por transacción: ${SERVICE_FEE_MXN} MXN
+              Comision fija por transaccion: ${SERVICE_FEE_MXN} MXN
             </p>
           </form>
         )}
@@ -399,7 +399,7 @@ export default function Pagos() {
 
             {!loadingHistory && transactions.length === 0 && (
               <div className="text-center py-8 text-gray-400">
-                No tienes pagos aún
+                No tienes pagos aun
               </div>
             )}
 
@@ -415,7 +415,7 @@ export default function Pagos() {
                   <div className="flex items-center gap-2 text-xs text-gray-400">
                     {getStatusIcon(tx.status)}
                     <span>{getStatusLabel(tx.status)}</span>
-                    <span>·</span>
+                    <span>-</span>
                     <span>{formatDate(tx.created_at)}</span>
                   </div>
                 </div>

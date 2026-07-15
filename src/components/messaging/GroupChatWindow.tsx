@@ -552,7 +552,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
       if (url) {
         setEditAvatarPreview(url);
         if (onEditGroupAvatar) onEditGroupAvatar(url);
-        else await (supabase.from('groups') as any).update({ avatar_url: url }).eq('id', group.id);
+        else await supabase.from('groups').update({ avatar_url: url }).eq('id', group.id);
         toast.success('Avatar de grupo actualizado');
       }
     } finally {
@@ -1235,7 +1235,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
               isRecording={audioRecorder.isRecording}
               duration={audioRecorder.duration}
               isSupported={audioRecorder.isSupported}
-              onStart={() => audioRecorder.startRecording()}
+              onStart={async () => { await audioRecorder.startRecording(); }}
               onStop={handleAudioSend}
               onCancel={() => audioRecorder.cancelRecording()}
             />
@@ -1263,7 +1263,7 @@ const GroupChatWindow: React.FC<GroupChatWindowProps> = ({
                 isRecording={false}
                 duration={0}
                 isSupported={audioRecorder.isSupported}
-                onStart={() => audioRecorder.startRecording()}
+                onStart={async () => { await audioRecorder.startRecording(); }}
                 onStop={handleAudioSend}
                 onCancel={() => audioRecorder.cancelRecording()}
               />

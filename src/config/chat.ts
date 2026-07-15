@@ -11,7 +11,7 @@ export const CHAT_CONFIG = {
   SIGNED_URL_EXPIRY: 60 * 60 * 24 * 7,
   ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   ALLOWED_VIDEO_TYPES: ['video/mp4', 'video/webm'],
-  ALLOWED_AUDIO_TYPES: ['audio/webm', 'audio/mp4', 'audio/mpeg'],
+  ALLOWED_AUDIO_TYPES: ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav'],
 } as const;
 
 export const CALL_ICE_SERVERS: RTCIceServer[] = [

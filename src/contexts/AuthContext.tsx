@@ -1,12 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { syncSignUpToMexivanza, syncSignInToMexivanza } from '@/services/mexivanzaSync';
+import { clearSupabaseAuthArtifacts, supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
+import { syncSignUpToMexivanza, syncSignInToMexivanza, signOutMexivanza } from '@/services/mexivanzaSync';
 import { autoFriendAdmin } from '@/services/adminService';
-
-// ----------
-// TYPES
-// ----------
 
 export type AccountType = 'user';
 
@@ -26,77 +23,41 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
 }
 
-// ----------
-// CONTEXT
-// ----------
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const ADMIN_ROLES = ['admin', 'super_admin'];
 const PROFILE_RETRY_ATTEMPTS = 5;
 const PROFILE_RETRY_BASE_MS = 400;
 
-// ----------
-// HELPERS
-// ----------
+type ProfileAccountType = Pick<Database['public']['Tables']['profiles']['Row'], 'account_type'>;
+type UserRoleRow = Pick<Database['public']['Tables']['user_roles']['Row'], 'role'>;
 
 function isValidAccountType(value: unknown): value is AccountType {
-  return value === 'user' || value === 'client'; // 'client' accepted for back-compat
+  return value === 'user';
 }
 
-/**
- * Wait for the profile row to appear (created by the DB trigger).
- * Returns the profile data or null after all retries are exhausted.
- */
 async function waitForProfile(
   userId: string,
   retries: number = PROFILE_RETRY_ATTEMPTS,
 ): Promise<{ account_type: string } | null> {
   for (let attempt = 0; attempt < retries; attempt++) {
-    const { data, error } = await (supabase
-      .from('profiles' as any)
+    const { data, error } = await supabase
+      .from('profiles')
       .select('account_type')
       .eq('id', userId)
-      .maybeSingle() as any);
+      .maybeSingle();
 
-    if (!error && data?.account_type) return data;
+    const typed = data as ProfileAccountType | null;
+    if (!error && typeof typed?.account_type === 'string') {
+      return { account_type: typed.account_type };
+    }
 
-    // Profile doesn't exist yet �“ exponential backoff
     if (attempt < retries - 1) {
       await new Promise((r) => setTimeout(r, PROFILE_RETRY_BASE_MS * (attempt + 1)));
     }
   }
   return null;
 }
-
-/**
- * Try to recover session from localStorage as a last resort.
- * iOS PWA sometimes reports no session even though tokens are stored.
- */
-function tryRecoverSessionFromStorage(): { access_token: string; refresh_token: string } | null {
-  try {
-    const storageKey = Object.keys(localStorage).find(
-      (k) => k.startsWith('sb-') && k.endsWith('-auth-token'),
-    );
-    if (!storageKey) return null;
-
-    const stored = localStorage.getItem(storageKey);
-    if (!stored) return null;
-
-    const parsed = JSON.parse(stored);
-    if (parsed?.refresh_token) {
-      return {
-        access_token: parsed.access_token || '',
-        refresh_token: parsed.refresh_token,
-      };
-    }
-  } catch {}
-  return null;
-}
-
-// ----------
-// PROVIDER
-// ----------
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -107,9 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const lastLoadedUserId = useRef<string | null>(null);
   const initializedRef = useRef(false);
-  const recoveryAttemptedRef = useRef(false);
-
-  // â”€â”€ Load account type from profiles table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const refreshInFlightRef = useRef(false);
 
   const loadAccountType = useCallback(async (userId: string) => {
     if (lastLoadedUserId.current === userId) return;
@@ -125,25 +84,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // â”€â”€ Check admin role â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
   const checkAdminRole = useCallback(async (authUser: User) => {
     try {
-      // 1. Check user_metadata first (fastest)
-      const metaRole = authUser.user_metadata?.role;
+      const metaRole = authUser.user_metadata?.['role'];
       if (typeof metaRole === 'string' && ADMIN_ROLES.includes(metaRole)) {
         setIsAdmin(true);
         return;
       }
 
-      // 2. Check user_roles table
-      const { data, error } = await (supabase
-        .from('user_roles' as any)
+      const { data, error } = await supabase
+        .from('user_roles')
         .select('role')
         .eq('user_id', authUser.id)
-        .maybeSingle() as any);
+        .maybeSingle();
 
-      if (!error && data?.role && ADMIN_ROLES.includes(data.role)) {
+      const typedRole = data as UserRoleRow | null;
+
+      if (!error && typeof typedRole?.role === 'string' && ADMIN_ROLES.includes(typedRole.role)) {
         setIsAdmin(true);
         return;
       }
@@ -153,8 +110,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAdmin(false);
     }
   }, []);
-
-  // â”€â”€ Handle session changes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleSessionRef = useRef<(newSession: Session | null) => void>();
 
@@ -176,10 +131,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // â”€â”€ Auth listener (stable �“ no dependency on handleSession) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const runSessionRefresh = useCallback(async (clearOnFailure: boolean) => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+
+    try {
+      const { data: { session: refreshedSession } } = await supabase.auth.getSession();
+      if (refreshedSession) {
+        handleSessionRef.current?.(refreshedSession);
+        return;
+      }
+
+      const { data: { session: newSession }, error } = await supabase.auth.refreshSession();
+      if (newSession) {
+        handleSessionRef.current?.(newSession);
+        return;
+      }
+
+      if (error && clearOnFailure) {
+        handleSessionRef.current?.(null);
+      }
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
-    // STEP 1: Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
@@ -195,7 +172,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
     );
 
-    // STEP 2: Get existing session (page refresh / PWA relaunch)
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
       if (!initializedRef.current) {
         handleSessionRef.current?.(existingSession);
@@ -204,93 +180,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    // ----------
-    // STEP 3: iOS PWA �“ Re-check session when app resumes from background
-    //
-    // This is the critical fix for "app logs out when closed on iPhone".
-    // iOS kills the WebView when the PWA is backgrounded. When it resumes,
-    // the JS context is fresh but localStorage may still have tokens.
-    //
-    // Strategy:
-    //   1. Try getSession() �“ works if Supabase SDK still has it cached
-    //   2. Try refreshSession() �“ works if refresh token is still valid
-    //   3. Try recovering from localStorage directly �“ last resort
-    //   4. NEVER force logout �“ let user navigate naturally to login
-    // ----------
-
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') return;
-
-      supabase.auth.getSession().then(({ data: { session: refreshedSession } }) => {
-        if (refreshedSession) {
-          // Session still valid �“ update state silently
-          setSession(refreshedSession);
-          setUser(refreshedSession.user);
-          recoveryAttemptedRef.current = false;
-          return;
-        }
-
-        // Session is null �“ try to refresh
-        supabase.auth.refreshSession().then(({ data: { session: newSession }, error }) => {
-          if (newSession) {
-            handleSessionRef.current?.(newSession);
-            recoveryAttemptedRef.current = false;
-            console.log('[Auth] â�“… Session refreshed on visibility change');
-            return;
-          }
-
-          // refreshSession also failed �“ try localStorage recovery (once per resume)
-          if (error && !recoveryAttemptedRef.current) {
-            recoveryAttemptedRef.current = true;
-            console.warn('[Auth] Session refresh failed:', error.message, '�“ attempting localStorage recovery');
-
-            const stored = tryRecoverSessionFromStorage();
-            if (stored) {
-              supabase.auth.setSession({
-                access_token: stored.access_token,
-                refresh_token: stored.refresh_token,
-              }).then(({ data: { session: recoveredSession } }) => {
-                if (recoveredSession) {
-                  handleSessionRef.current?.(recoveredSession);
-                  console.log('[Auth] â�“… Session recovered from localStorage');
-                } else {
-                  console.warn('[Auth] localStorage recovery failed �“ user will need to re-login');
-                  // DON'T call signOut() or clear state here.
-                  // Let the user stay on the current page. They'll hit a
-                  // permission error naturally if they try to do something
-                  // that requires auth, and the UI will redirect to /auth.
-                }
-              }).catch(() => {
-                console.warn('[Auth] setSession from localStorage threw');
-              });
-            } else {
-              console.warn('[Auth] No stored tokens found �“ user will need to re-login');
-            }
-          }
-        });
-      });
+      void runSessionRefresh(true);
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // STEP 3b: iOS PWA �“ Handle "pageshow" event (fires when restored from bfcache)
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) {
-        console.log('[Auth] Page restored from bfcache �“ re-checking session');
         handleVisibilityChange();
       }
     };
     window.addEventListener('pageshow', handlePageShow);
-
-    // ----------
-    // STEP 4: Proactive token refresh every 4 minutes
-    //
-    // Was 10 minutes �“ too slow for iOS which can kill the app between
-    // intervals. 4 minutes ensures the token is always fresh when the
-    // user returns.
-    //
-    // Only refreshes if token expires within 10 minutes (600 seconds).
-    // ----------
 
     const refreshInterval = setInterval(() => {
       supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
@@ -299,21 +201,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const expiresAt = currentSession.expires_at ?? 0;
         const now = Math.floor(Date.now() / 1000);
 
-        // Refresh if less than 10 minutes remaining
         if (expiresAt - now < 600) {
-          supabase.auth.refreshSession().then(({ data: { session: newSess } }) => {
-            if (newSess) {
-              setSession(newSess);
-              setUser(newSess.user);
-            }
-          });
+          void runSessionRefresh(false);
         }
       });
     }, 4 * 60 * 1000);
-
-    // ----------
-    // CLEANUP
-    // ----------
 
     return () => {
       subscription.unsubscribe();
@@ -321,9 +213,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       window.removeEventListener('pageshow', handlePageShow);
       clearInterval(refreshInterval);
     };
-  }, []); // â† Stable: no dependencies that change
-
-  // â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  }, [runSessionRefresh]);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
@@ -335,8 +225,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) {
-      // Fire-and-forget: also sign in on MexiVanza for community access
-      syncSignInToMexivanza(email, password);
+      await syncSignInToMexivanza(email, password);
     }
     return { error };
   }, []);
@@ -365,8 +254,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (data.user) {
       await waitForProfile(data.user.id);
       setAccountType('user');
-      // Fire-and-forget: auto-register on MexiVanza
-      syncSignUpToMexivanza(email, password, fullName);
+      await syncSignUpToMexivanza(email, password, fullName);
       autoFriendAdmin(data.user.id);
     }
 
@@ -375,8 +263,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = useCallback(async () => {
     lastLoadedUserId.current = null;
-    recoveryAttemptedRef.current = false;
-    await supabase.auth.signOut();
+    try {
+      await signOutMexivanza();
+    } finally {
+      await supabase.auth.signOut();
+      clearSupabaseAuthArtifacts();
+    }
     setIsAdmin(false);
     setAccountType('user');
   }, []);
@@ -399,10 +291,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
-// ----------
-// HOOK
-// ----------
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

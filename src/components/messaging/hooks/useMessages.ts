@@ -1,10 +1,72 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { MessageEncryption } from '@/utils/encryption-enterprise';
 import { sendPushNotification } from '@/utils/pushNotify';
 import type { PrivateMessage } from '../types';
 
 const MESSAGES_PER_PAGE = 50;
+
+const PRIVATE_MESSAGES_TABLE = 'private_messages' as const;
+const CONVERSATIONS_TABLE = 'conversations' as const;
+const PROFILES_TABLE = 'profiles' as const;
+
+type DbPrivateMessage = Database['public']['Tables']['private_messages']['Row'];
+type DbConversation = Database['public']['Tables']['conversations']['Row'];
+type DbProfile = Database['public']['Tables']['profiles']['Row'];
+
+type ConversationParticipants = {
+  user_1: string;
+  user_2: string;
+};
+
+type MessageMutation = {
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  media_url?: string;
+  media_type?: PrivateMessage['media_type'];
+  reply_to?: string;
+  is_forwarded?: boolean;
+};
+
+function normalizeMediaType(value: string | null | undefined): PrivateMessage['media_type'] {
+  switch (value) {
+    case 'image':
+    case 'video':
+    case 'audio':
+    case 'document':
+    case 'location':
+      return value;
+    default:
+      return null;
+  }
+}
+
+function normalizeMessage(message: Partial<DbPrivateMessage> & Pick<DbPrivateMessage, 'id' | 'sender_id' | 'content'>): PrivateMessage {
+  return {
+    id: message.id,
+    conversation_id: message.conversation_id ?? '',
+    sender_id: message.sender_id,
+    content: message.content,
+    media_url: message.media_url ?? null,
+    media_type: normalizeMediaType(message.media_type),
+    is_read: Boolean(message.is_read),
+    created_at: message.created_at ?? new Date().toISOString(),
+    edited_at: message.edited_at ?? null,
+    reply_to: message.reply_to ?? null,
+    is_forwarded: message.is_forwarded ?? false,
+  };
+}
+
+function getConversationParticipants(conversation: Pick<DbConversation, 'user_1' | 'user_2'> | null): ConversationParticipants | null {
+  if (!conversation?.user_1 || !conversation.user_2) return null;
+  return { user_1: conversation.user_1, user_2: conversation.user_2 };
+}
+
+function getDeletedMessageId(payloadOld: Record<string, unknown> | null): string | null {
+  return typeof payloadOld?.id === 'string' ? payloadOld.id : null;
+}
 
 export function useMessages(conversationId: string | null, userId: string | undefined) {
   const [messages, setMessages] = useState<PrivateMessage[]>([]);
@@ -48,20 +110,22 @@ export function useMessages(conversationId: string | null, userId: string | unde
     }
   };
 
+  const ENCRYPTED_NOTIFICATION_PLACEHOLDER = '\uD83D\uDD12 Mensaje cifrado';
+
   // ─── Fetch initial messages ───
   const fetchMessages = useCallback(async () => {
     if (!conversationId) { setMessages([]); return; }
 
     setLoading(true);
-    const { data, error } = await (supabase
-      .from('private_messages' as any)
+    const { data, error } = await supabase
+      .from(PRIVATE_MESSAGES_TABLE)
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: false })
-      .limit(MESSAGES_PER_PAGE) as any);
+      .limit(MESSAGES_PER_PAGE);
 
     if (!error && data) {
-      const reversed = (data as PrivateMessage[]).reverse();
+      const reversed = data.map(normalizeMessage).reverse();
 
       const decrypted = await Promise.all(
         reversed.map(async (msg) => ({
@@ -76,14 +140,15 @@ export function useMessages(conversationId: string | null, userId: string | unde
       // Mark unread as read
       if (userId) {
         const unreadIds = data
-          .filter((m: any) => !m.is_read && m.sender_id !== userId)
-          .map((m: any) => m.id);
+          .map(normalizeMessage)
+          .filter((message) => !message.is_read && message.sender_id !== userId)
+          .map((message) => message.id);
 
         if (unreadIds.length > 0) {
-          await (supabase
-            .from('private_messages' as any)
-            .update({ is_read: true } as any)
-            .in('id', unreadIds) as any);
+          await supabase
+            .from(PRIVATE_MESSAGES_TABLE)
+            .update({ is_read: true })
+            .in('id', unreadIds);
         }
       }
     }
@@ -97,16 +162,16 @@ export function useMessages(conversationId: string | null, userId: string | unde
     setLoadingMore(true);
     const oldestMessage = messages[0];
 
-    const { data, error } = await (supabase
-      .from('private_messages' as any)
+    const { data, error } = await supabase
+      .from(PRIVATE_MESSAGES_TABLE)
       .select('*')
       .eq('conversation_id', conversationId)
       .lt('created_at', oldestMessage.created_at)
       .order('created_at', { ascending: false })
-      .limit(MESSAGES_PER_PAGE) as any);
+      .limit(MESSAGES_PER_PAGE);
 
     if (!error && data) {
-      const reversed = (data as PrivateMessage[]).reverse();
+      const reversed = data.map(normalizeMessage).reverse();
 
       const decrypted = await Promise.all(
         reversed.map(async (msg) => ({
@@ -144,7 +209,7 @@ export function useMessages(conversationId: string | null, userId: string | unde
           table: 'private_messages',
           filter: `conversation_id=eq.${conversationId}`,
         }, async (payload) => {
-          const newMsg = payload.new as PrivateMessage;
+          const newMsg = normalizeMessage(payload.new as Partial<DbPrivateMessage> & Pick<DbPrivateMessage, 'id' | 'sender_id' | 'content'>);
 
           const decryptedContent = await decryptContent(newMsg.content, newMsg.sender_id);
           const decryptedMsg = { ...newMsg, content: decryptedContent };
@@ -160,10 +225,10 @@ export function useMessages(conversationId: string | null, userId: string | unde
 
           // Auto mark as read if receiver has conversation open
           if (userId && newMsg.sender_id !== userId) {
-            (supabase
-              .from('private_messages' as any)
-              .update({ is_read: true } as any)
-              .eq('id', newMsg.id) as any);
+            void supabase
+              .from(PRIVATE_MESSAGES_TABLE)
+              .update({ is_read: true })
+              .eq('id', newMsg.id);
           }
         })
         .on('postgres_changes', {
@@ -172,10 +237,10 @@ export function useMessages(conversationId: string | null, userId: string | unde
           table: 'private_messages',
           filter: `conversation_id=eq.${conversationId}`,
         }, (payload) => {
-          const updated = payload.new as PrivateMessage;
+          const updated = normalizeMessage(payload.new as Partial<DbPrivateMessage> & Pick<DbPrivateMessage, 'id' | 'sender_id' | 'content'>);
           setMessages(prev =>
             prev.map(m => m.id === updated.id
-              ? { ...m, is_read: updated.is_read, edited_at: (updated as any).edited_at }
+              ? { ...m, is_read: updated.is_read, edited_at: updated.edited_at }
               : m
             )
           );
@@ -186,7 +251,7 @@ export function useMessages(conversationId: string | null, userId: string | unde
           table: 'private_messages',
           filter: `conversation_id=eq.${conversationId}`,
         }, (payload) => {
-          const deletedId = (payload.old as any)?.id;
+          const deletedId = getDeletedMessageId(payload.old as Record<string, unknown> | null);
           if (deletedId) {
             setMessages(prev => prev.filter(m => m.id !== deletedId));
           }
@@ -228,29 +293,32 @@ export function useMessages(conversationId: string | null, userId: string | unde
     if (!conversationId || !userId || (!content.trim() && !mediaUrl)) return;
 
     // Get conversation to find recipient
-    const { data: convo } = await (supabase
-      .from('conversations' as any)
+    const { data: convo } = await supabase
+      .from(CONVERSATIONS_TABLE)
       .select('user_1, user_2')
       .eq('id', conversationId)
-      .single() as any);
+      .single();
 
-    if (!convo) throw new Error('Conversation not found');
+    const participants = getConversationParticipants(convo);
+    if (!participants) throw new Error('Conversation not found');
 
-    const recipientId = convo.user_1 === userId ? convo.user_2 : convo.user_1;
+    const recipientId = participants.user_1 === userId ? participants.user_2 : participants.user_1;
     let encryptedContent = content.trim();
 
-    // Encrypt if available
-    if (MessageEncryption.isInitialized() && recipientId && encryptedContent) {
-      try {
-        encryptedContent = await MessageEncryption.encrypt(content.trim(), recipientId);
-      } catch (error) {
-        console.error('[ENCRYPTION] Failed, sending unencrypted:', error);
-        encryptedContent = content.trim();
+    // Carrier-grade policy: never send plaintext when encryption is expected.
+    if (recipientId && encryptedContent) {
+      if (!MessageEncryption.isInitialized()) {
+        throw new Error('E2EE is not ready. Retry after encryption initializes.');
+      }
+
+      encryptedContent = await MessageEncryption.encrypt(content.trim(), recipientId);
+      if (!MessageEncryption.isEncrypted(encryptedContent)) {
+        throw new Error('E2EE failed: plaintext fallback blocked.');
       }
     }
 
     // Build message
-    const messageData: any = {
+    const messageData: MessageMutation = {
       conversation_id: conversationId,
       sender_id: userId,
       content: encryptedContent || '',
@@ -273,16 +341,16 @@ export function useMessages(conversationId: string | null, userId: string | unde
       created_at: new Date().toISOString(),
       reply_to: replyTo || null,
       is_forwarded: isForwarded || false,
-    } as any;
+    };
 
     setMessages(prev => [...prev, optimisticMsg]);
 
     // ═══ DB INSERT ═══
-    const { data: inserted, error } = await (supabase
-      .from('private_messages' as any)
-      .insert(messageData)
+    const { data: inserted, error } = await supabase
+      .from(PRIVATE_MESSAGES_TABLE)
+      .insert(messageData as never)
       .select('*')
-      .single() as any);
+      .single();
 
     if (error) {
       setMessages(prev => prev.filter(m => m.id !== optimisticId));
@@ -291,9 +359,10 @@ export function useMessages(conversationId: string | null, userId: string | unde
 
     // Replace optimistic with real message
     if (inserted) {
+      const normalizedInserted = normalizeMessage(inserted as Partial<DbPrivateMessage> & Pick<DbPrivateMessage, 'id' | 'sender_id' | 'content'>);
       setMessages(prev =>
         prev.map(m => m.id === optimisticId
-          ? { ...inserted, content: content.trim() }
+          ? { ...normalizedInserted, content: content.trim() }
           : m
         )
       );
@@ -306,14 +375,14 @@ export function useMessages(conversationId: string | null, userId: string | unde
 
     const displayPreview = mediaUrl ? mediaPreview(mediaType) : previewText;
 
-    await (supabase
-      .from('conversations' as any)
+    await supabase
+      .from(CONVERSATIONS_TABLE)
       .update({
         last_message: displayPreview,
         last_message_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      } as any)
-      .eq('id', conversationId) as any);
+      })
+      .eq('id', conversationId);
 
     // ═══ Get sender profile ═══
     let senderName = 'Nuevo mensaje';
@@ -321,18 +390,21 @@ export function useMessages(conversationId: string | null, userId: string | unde
 
     try {
       const { data: myProfile } = await supabase
-        .from('profiles')
+        .from(PROFILES_TABLE)
         .select('full_name, avatar_url')
         .eq('id', userId)
         .single();
 
-      senderName = (myProfile as any)?.full_name || 'Nuevo mensaje';
-      senderAvatar = (myProfile as any)?.avatar_url || null;
-    } catch {}
+      const typedProfile = myProfile as Pick<DbProfile, 'full_name' | 'avatar_url'> | null;
+      senderName = typedProfile?.full_name || 'Nuevo mensaje';
+      senderAvatar = typedProfile?.avatar_url || null;
+    } catch (profileError) {
+      console.warn('[Messages] Failed to load sender profile for push metadata', profileError);
+    }
 
     const notifBody = mediaUrl
       ? mediaPushText(mediaType)
-      : content.trim().slice(0, 100);
+      : ENCRYPTED_NOTIFICATION_PLACEHOLDER;
 
     // ═══ PUSH NOTIFICATION ═══
     try {
@@ -345,7 +417,9 @@ export function useMessages(conversationId: string | null, userId: string | unde
         conversationId,
         avatarUrl: senderAvatar,
       });
-    } catch {}
+    } catch (pushError) {
+      console.warn('[Messages] Push notification failed', pushError);
+    }
 
     // ═══ IN-APP BROADCAST ═══
     try {
@@ -360,7 +434,7 @@ export function useMessages(conversationId: string | null, userId: string | unde
                 to: recipientId,
                 from: userId,
                 fromName: senderName,
-                preview: mediaUrl ? mediaPreview(mediaType) : content.trim().slice(0, 100),
+                preview: mediaUrl ? mediaPreview(mediaType) : ENCRYPTED_NOTIFICATION_PLACEHOLDER,
                 conversationId,
                 avatarUrl: senderAvatar,
               },
@@ -378,17 +452,19 @@ export function useMessages(conversationId: string | null, userId: string | unde
         });
         setTimeout(() => { supabase.removeChannel(notifyChannel); resolve(); }, 3000);
       });
-    } catch {}
+    } catch (broadcastError) {
+      console.warn('[Messages] In-app broadcast failed', broadcastError);
+    }
   };
 
   // ─── Delete message ───
   const deleteMessage = async (messageId: string) => {
     if (!userId) return;
-    const { error } = await (supabase
-      .from('private_messages' as any)
+    const { error } = await supabase
+      .from(PRIVATE_MESSAGES_TABLE)
       .delete()
       .eq('id', messageId)
-      .eq('sender_id', userId) as any);
+      .eq('sender_id', userId);
 
     if (!error) {
       setMessages(prev => prev.filter(m => m.id !== messageId));
@@ -401,33 +477,38 @@ export function useMessages(conversationId: string | null, userId: string | unde
     if (!userId || !newContent.trim()) return false;
 
     let encryptedContent = newContent.trim();
-    if (MessageEncryption.isInitialized()) {
-      try {
-        // Get conversation to find recipient for encryption
-        const { data: convo } = await (supabase
-          .from('conversations' as any)
-          .select('user_1, user_2')
-          .eq('id', conversationId)
-          .single() as any);
-        if (convo) {
-          const recipientId = convo.user_1 === userId ? convo.user_2 : convo.user_1;
-          encryptedContent = await MessageEncryption.encrypt(newContent.trim(), recipientId);
-        }
-      } catch {
-        encryptedContent = newContent.trim();
-      }
+    // Get conversation to find recipient for encryption
+    const { data: convo } = await supabase
+      .from(CONVERSATIONS_TABLE)
+      .select('user_1, user_2')
+      .eq('id', conversationId)
+      .single();
+
+    const participants = getConversationParticipants(convo);
+    if (!participants) return false;
+
+    const recipientId = participants.user_1 === userId ? participants.user_2 : participants.user_1;
+
+    if (!MessageEncryption.isInitialized()) {
+      return false;
     }
 
-    const { error } = await (supabase
-      .from('private_messages' as any)
-      .update({ content: encryptedContent, edited_at: new Date().toISOString() } as any)
+    encryptedContent = await MessageEncryption.encrypt(newContent.trim(), recipientId);
+    if (!MessageEncryption.isEncrypted(encryptedContent)) {
+      return false;
+    }
+
+    const editedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from(PRIVATE_MESSAGES_TABLE)
+      .update({ content: encryptedContent, edited_at: editedAt })
       .eq('id', messageId)
-      .eq('sender_id', userId) as any);
+      .eq('sender_id', userId);
 
     if (!error) {
       setMessages(prev =>
         prev.map(m => m.id === messageId
-          ? { ...m, content: newContent.trim(), edited_at: new Date().toISOString() }
+          ? { ...m, content: newContent.trim(), edited_at: editedAt }
           : m
         )
       );
@@ -439,25 +520,26 @@ export function useMessages(conversationId: string | null, userId: string | unde
   const startConversation = async (otherUserId: string): Promise<string> => {
     if (!userId) throw new Error('Not authenticated');
 
-    const { data: existing } = await (supabase
-      .from('conversations' as any)
+    const { data: existing } = await supabase
+      .from(CONVERSATIONS_TABLE)
       .select('id')
       .or(`and(user_1.eq.${userId},user_2.eq.${otherUserId}),and(user_1.eq.${otherUserId},user_2.eq.${userId})`)
-      .limit(1) as any);
+      .limit(1);
 
-    if (existing && existing.length > 0) return existing[0].id;
+    if (existing && existing.length > 0 && existing[0].id) return existing[0].id;
 
-    const { data: newConvo, error } = await (supabase
-      .from('conversations' as any)
+    const { data: newConvo, error } = await supabase
+      .from(CONVERSATIONS_TABLE)
       .insert({
         user_1: userId,
         user_2: otherUserId,
         last_message_at: new Date().toISOString(),
-      } as any)
+      })
       .select('id')
-      .single() as any);
+      .single();
 
     if (error) throw error;
+    if (!newConvo?.id) throw new Error('Conversation creation failed');
     return newConvo.id;
   };
 

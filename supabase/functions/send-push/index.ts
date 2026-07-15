@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck - Deno Edge Function
-// Deploy: npx supabase functions deploy send-push --no-verify-jwt
+// Deploy: npx supabase functions deploy send-push
 
 /**
  * MEXICHAT - Web Push + FCM v1 + APNs Notification Sender v6.0 (Carrier-Grade)
@@ -43,12 +44,78 @@ const APNS_KEY_ID = Deno.env.get('APNS_KEY_ID') || '';
 const APNS_TEAM_ID = Deno.env.get('APNS_TEAM_ID') || '';
 const APNS_AUTH_KEY = Deno.env.get('APNS_AUTH_KEY') || '';
 const APNS_BUNDLE_ID = Deno.env.get('APNS_BUNDLE_ID') || 'mx.mexichat.app';
+const PUSH_MAX_SUBSCRIPTIONS = 50;
+const PUSH_MAX_TITLE_CHARS = 120;
+const PUSH_MAX_BODY_CHARS = 300;
+const PUSH_MAX_CALL_TYPE_CHARS = 32;
+const PUSH_MAX_AVATAR_URL_CHARS = 500;
+const PUSH_RATE_LIMIT_PER_MIN = 60;
+const PUSH_IDEMPOTENCY_TTL_SECONDS = 120;
+const PUSH_ALLOWED_ORIGINS = (Deno.env.get('PUSH_ALLOWED_ORIGINS') || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const ALLOWED_PUSH_TYPES = new Set(['message', 'call', 'incoming_call', 'video_call']);
+const IDEMPOTENCY_KEY_PATTERN = /^[a-zA-Z0-9:_-]{16,128}$/;
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey, x-idempotency-key',
+  'Vary': 'Origin',
 };
+
+function resolveCorsHeaders(req: Request): Record<string, string> | null {
+  const origin = (req.headers.get('origin') || '').trim();
+  if (PUSH_ALLOWED_ORIGINS.length === 0) {
+    return { ...CORS, 'Access-Control-Allow-Origin': '*' };
+  }
+
+  if (origin && PUSH_ALLOWED_ORIGINS.includes(origin)) {
+    return { ...CORS, 'Access-Control-Allow-Origin': origin };
+  }
+
+  if (!origin) {
+    return { ...CORS, 'Access-Control-Allow-Origin': PUSH_ALLOWED_ORIGINS[0] };
+  }
+
+  return null;
+}
+
+function jsonResponse(payload: Record<string, unknown>, status = 200, corsHeaders?: Record<string, string>): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...(corsHeaders || CORS) },
+  });
+}
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function clampString(value: unknown, maxLength: number, fallback = ''): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+  return trimmed.slice(0, maxLength);
+}
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('cf-connecting-ip') || '';
+  const first = forwarded.split(',')[0]?.trim();
+  return (first || 'unknown').slice(0, 64);
+}
+
+function isValidIdempotencyKey(value: string): boolean {
+  return IDEMPOTENCY_KEY_PATTERN.test(value);
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const bytes = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 
 // ========== BASE64URL HELPERS ==========
 
@@ -304,17 +371,162 @@ async function sendWebPush(sub: { endpoint: string; p256dh: string; auth: string
 // ========== HANDLER ==========
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+  const corsHeaders = resolveCorsHeaders(req);
+  if (!corsHeaders) {
+    return new Response(JSON.stringify({ error: 'origin_not_allowed' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json', ...CORS },
+    });
+  }
+
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
   const startTime = Date.now();
+  const requestId = crypto.randomUUID();
   try {
-    const body = await req.json();
-    const { targetUserId, type, title, body: messageBody, fromUserId, conversationId, callType, avatarUrl } = body;
-    if (!targetUserId) return new Response(JSON.stringify({ error: 'targetUserId required' }), { status: 400, headers: { 'Content-Type': 'application/json', ...CORS } });
+    const contentType = req.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().includes('application/json')) {
+      return jsonResponse({ error: 'invalid_content_type', requestId }, 415, corsHeaders);
+    }
+
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    if (!jwt) {
+      return jsonResponse({ error: 'unauthorized', requestId }, 401, corsHeaders);
+    }
+
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse({ error: 'invalid_json', requestId }, 400, corsHeaders);
+    }
+
+    const targetUserId = body.targetUserId;
+    const type = clampString(body.type, 24, 'message');
+    const title = clampString(body.title, PUSH_MAX_TITLE_CHARS, 'MexiChat');
+    const messageBody = clampString(body.body, PUSH_MAX_BODY_CHARS, 'Tienes un nuevo mensaje');
+    const fromUserId = body.fromUserId;
+    const conversationId = body.conversationId;
+    const callType = clampString(body.callType, PUSH_MAX_CALL_TYPE_CHARS, '');
+    const avatarUrl = clampString(body.avatarUrl, PUSH_MAX_AVATAR_URL_CHARS, '');
+    const idempotencyKey = (req.headers.get('x-idempotency-key') || '').trim();
+
+    if (!isUuid(targetUserId)) {
+      return jsonResponse({ error: 'targetUserId must be uuid', requestId }, 400, corsHeaders);
+    }
+
+    if (!ALLOWED_PUSH_TYPES.has(type)) {
+      return jsonResponse({ error: 'invalid_type', requestId }, 400, corsHeaders);
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const { data: subs, error: dbErr } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', targetUserId);
-    if (dbErr) return new Response(JSON.stringify({ error: 'db_error' }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } });
-    if (!subs || subs.length === 0) return new Response(JSON.stringify({ sent: 0, reason: 'no_subscriptions' }), { status: 200, headers: { 'Content-Type': 'application/json', ...CORS } });
+
+    const { data: authData, error: authError } = await supabase.auth.getUser(jwt);
+    const callerUserId = authData?.user?.id;
+    if (authError || !callerUserId) {
+      return jsonResponse({ error: 'invalid_token', requestId }, 401, corsHeaders);
+    }
+
+    const clientIp = getClientIp(req);
+
+    const { data: rateLimitData, error: rateLimitError } = await supabase.rpc('fn_check_push_rate_limit', {
+      p_actor_user_id: callerUserId,
+      p_source_ip: clientIp,
+      p_limit: PUSH_RATE_LIMIT_PER_MIN,
+    });
+
+    if (rateLimitError) {
+      return jsonResponse({ error: 'rate_limit_check_failed', requestId }, 500, corsHeaders);
+    }
+
+    if (!rateLimitData?.allowed) {
+      return jsonResponse({
+        error: 'rate_limited',
+        requestId,
+        limit: rateLimitData?.limit ?? PUSH_RATE_LIMIT_PER_MIN,
+        count: rateLimitData?.count ?? null,
+      }, 429, corsHeaders);
+    }
+
+    const eventType = String(type || 'message');
+    const requiresActor = eventType === 'message' || eventType === 'call' || eventType === 'incoming_call' || eventType === 'video_call';
+    if (requiresActor) {
+      if (!isValidIdempotencyKey(idempotencyKey)) {
+        return jsonResponse({ error: 'invalid_idempotency_key', requestId }, 400, corsHeaders);
+      }
+
+      const requestHashInput = JSON.stringify({
+        type,
+        title,
+        messageBody,
+        targetUserId,
+        fromUserId,
+        conversationId,
+        callType,
+        avatarUrl,
+      });
+      const requestHash = await sha256Hex(requestHashInput);
+
+      const { data: idempotencyData, error: idempotencyError } = await supabase.rpc('fn_register_push_idempotency', {
+        p_actor_user_id: callerUserId,
+        p_idempotency_key: idempotencyKey,
+        p_ttl_seconds: PUSH_IDEMPOTENCY_TTL_SECONDS,
+        p_request_hash: requestHash,
+      });
+
+      if (idempotencyError) {
+        return jsonResponse({ error: 'idempotency_check_failed', requestId }, 500, corsHeaders);
+      }
+
+      if (!idempotencyData?.accepted) {
+        const reason = idempotencyData?.reason === 'idempotency_key_payload_mismatch'
+          ? 'idempotency_key_payload_mismatch'
+          : 'replay_detected';
+        return jsonResponse({ error: reason, requestId }, 409, corsHeaders);
+      }
+
+      if (!isUuid(fromUserId)) {
+        return jsonResponse({ error: 'fromUserId required', requestId }, 400, corsHeaders);
+      }
+
+      if (fromUserId !== callerUserId) {
+        return jsonResponse({ error: 'forbidden_sender_mismatch', requestId }, 403, corsHeaders);
+      }
+
+      if (conversationId != null) {
+        if (!isUuid(conversationId)) {
+          return jsonResponse({ error: 'invalid_conversation_id', requestId }, 400, corsHeaders);
+        }
+
+        const { data: convo, error: convoErr } = await supabase
+          .from('conversations')
+          .select('id, user_1, user_2')
+          .eq('id', conversationId)
+          .maybeSingle();
+
+        if (convoErr) {
+          return jsonResponse({ error: 'conversation_lookup_failed', requestId }, 500, corsHeaders);
+        }
+
+        if (!convo) {
+          return jsonResponse({ error: 'conversation_not_found', requestId }, 404, corsHeaders);
+        }
+
+        const isCallerParticipant = convo.user_1 === callerUserId || convo.user_2 === callerUserId;
+        const isTargetParticipant = convo.user_1 === targetUserId || convo.user_2 === targetUserId;
+        if (!isCallerParticipant || !isTargetParticipant) {
+          return jsonResponse({ error: 'forbidden_conversation_mismatch', requestId }, 403, corsHeaders);
+        }
+      }
+    }
+
+    const { data: subs, error: dbErr } = await supabase
+      .from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth')
+      .eq('user_id', targetUserId)
+      .limit(PUSH_MAX_SUBSCRIPTIONS);
+    if (dbErr) return jsonResponse({ error: 'db_error', requestId }, 500, corsHeaders);
+    if (!subs || subs.length === 0) return jsonResponse({ sent: 0, reason: 'no_subscriptions', requestId }, 200, corsHeaders);
 
     const isCall = type === 'call' || type === 'incoming_call' || type === 'video_call';
     const pushPayload: Record<string, unknown> = {
@@ -380,13 +592,10 @@ serve(async (req: Request) => {
     if (expiredIds.length > 0) await supabase.from('push_subscriptions').delete().in('id', expiredIds);
 
     const elapsed = Date.now() - startTime;
-    console.log(`[push] target=${targetUserId.slice(0,8)} type=${type} web=${webSubs.length} fcm=${androidTokens.length} apns=${iosTokens.length} sent=${sent} failed=${failed} ms=${elapsed}`);
+    console.log(`[push] request=${requestId} ip=${clientIp} target=${targetUserId.slice(0,8)} type=${type} web=${webSubs.length} fcm=${androidTokens.length} apns=${iosTokens.length} sent=${sent} failed=${failed} ms=${elapsed}`);
 
-    return new Response(
-      JSON.stringify({ sent, failed, expired: expiredIds.length, web: webSubs.length, fcm: androidTokens.length, apns: iosTokens.length, ms: elapsed }),
-      { status: 200, headers: { 'Content-Type': 'application/json', ...CORS } },
-    );
+    return jsonResponse({ sent, failed, expired: expiredIds.length, web: webSubs.length, fcm: androidTokens.length, apns: iosTokens.length, ms: elapsed, requestId }, 200, corsHeaders);
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), { status: 500, headers: { 'Content-Type': 'application/json', ...CORS } });
+    return jsonResponse({ error: (err as Error).message, requestId }, 500, corsHeaders);
   }
 });

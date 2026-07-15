@@ -5,7 +5,7 @@
  * See LICENSE file for details.
  */
 /**
- * useTranslation â€” Central translation hook
+ * useTranslation - Central translation hook
  * Usage: const { t, lang, setLang } = useTranslation();
  */
 import { useLanguage } from '@/contexts/LanguageContext';

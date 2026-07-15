@@ -4,6 +4,7 @@
  * Copyright (c) 2024-2026 MexiVanza. All Rights Reserved.
  */
 import { Capacitor } from '@capacitor/core';
+import { trackSecurityEvent } from '@/services/observability';
 
 // ══════════════════════════════════════════
 // 1. ROOT / JAILBREAK DETECTION
@@ -12,6 +13,17 @@ import { Capacitor } from '@capacitor/core';
 interface SecurityCheckResult {
   isCompromised: boolean;
   reasons: string[];
+}
+
+const SECURITY_EVENT_COOLDOWN_MS = 5 * 60 * 1000;
+const securityEventTimestamps = new Map<string, number>();
+
+function emitSecuritySignal(event: string, props?: Record<string, string | number | boolean>): void {
+  const now = Date.now();
+  const last = securityEventTimestamps.get(event) ?? 0;
+  if (now - last < SECURITY_EVENT_COOLDOWN_MS) return;
+  securityEventTimestamps.set(event, now);
+  trackSecurityEvent(event, props);
 }
 
 export async function checkDeviceIntegrity(): Promise<SecurityCheckResult> {
@@ -29,6 +41,7 @@ export async function checkDeviceIntegrity(): Promise<SecurityCheckResult> {
       const ua = navigator.userAgent.toLowerCase();
       if (ua.includes('rooted') || ua.includes('supersu') || ua.includes('magisk')) {
         reasons.push('root_detected_ua');
+        emitSecuritySignal('root_detected_ua', { platform: 'android' });
       }
 
       // Check if Frida server is running (common hacking tool on port 27042)
@@ -42,6 +55,7 @@ export async function checkDeviceIntegrity(): Promise<SecurityCheckResult> {
         clearTimeout(timeout);
         if (response) {
           reasons.push('frida_server_detected');
+          emitSecuritySignal('frida_server_detected', { platform: 'android' });
         }
       } catch {
         // Expected — port closed = safe
@@ -67,6 +81,7 @@ export async function checkDeviceIntegrity(): Promise<SecurityCheckResult> {
   // Check for developer tools
   if (detectDevTools()) {
     reasons.push('devtools_detected');
+    emitSecuritySignal('devtools_detected', { context: 'device_integrity' });
   }
 
   return {
@@ -94,6 +109,7 @@ export function checkAppIntegrity(): boolean {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
   if (supabaseUrl && !supabaseUrl.includes('supabase.co')) {
     console.error('[Security] Supabase URL tampered');
+    emitSecuritySignal('supabase_url_tampered');
     return false;
   }
 
@@ -103,6 +119,7 @@ export function checkAppIntegrity(): boolean {
     const src = (script as HTMLScriptElement).src;
     if (src && !src.includes(window.location.origin) && !src.includes('capacitor')) {
       console.error('[Security] Unknown script injected:', src);
+      emitSecuritySignal('unknown_script_injected', { src });
       return false;
     }
   }
@@ -117,7 +134,10 @@ export function checkAppIntegrity(): boolean {
 export function preventScreenCapture(): void {
   if (!Capacitor.isNativePlatform()) return;
 
+  if (document.getElementById('mc-screen-capture-style')) return;
+
   const style = document.createElement('style');
+  style.id = 'mc-screen-capture-style';
   style.textContent = `
     .sensitive-content {
       -webkit-user-select: none;
@@ -137,8 +157,17 @@ export function preventScreenCapture(): void {
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
+function pruneRateLimitMap(now: number): void {
+  for (const [key, entry] of rateLimitMap.entries()) {
+    if (now > entry.resetAt) {
+      rateLimitMap.delete(key);
+    }
+  }
+}
+
 export function rateLimit(key: string, maxAttempts: number, windowMs: number): boolean {
   const now = Date.now();
+  pruneRateLimitMap(now);
   const entry = rateLimitMap.get(key);
 
   if (!entry || now > entry.resetAt) {
@@ -188,7 +217,7 @@ export function initAntiCopy(): void {
     const tag = target.tagName?.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return;
     // Allow selection in chat messages for copy
-    if (target.closest('.message-content, .chat-message')) return;
+    if (target instanceof Element && target.closest('.message-content, .chat-message')) return;
     e.preventDefault();
   });
 }
@@ -222,12 +251,14 @@ function startIntegrityMonitor(): void {
   setInterval(() => {
     if (!checkAppIntegrity()) {
       console.error('[Security] Integrity check failed during runtime');
+      emitSecuritySignal('runtime_integrity_failed');
     }
 
     // Check if someone attached a debugger
     if (detectDevTools()) {
       // Don't crash — just log
       console.warn('[Security] DevTools detected');
+      emitSecuritySignal('devtools_detected', { context: 'runtime_monitor' });
     }
   }, 30000);
 }
@@ -261,6 +292,9 @@ export async function initSecurity(): Promise<void> {
   const deviceCheck = await checkDeviceIntegrity();
   if (deviceCheck.isCompromised) {
     console.warn('[Security] Device may be compromised:', deviceCheck.reasons);
+    emitSecuritySignal('device_compromised', {
+      reason_count: deviceCheck.reasons.length,
+    });
   }
 
   // Start periodic monitoring

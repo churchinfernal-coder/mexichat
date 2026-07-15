@@ -1,5 +1,6 @@
 /**
  * MexiChat - Copyright (c) 2024-2026 MexiVanza. All Rights Reserved.
+/**
  * Proprietary and confidential. Unauthorized copying, modification,
  * distribution, or use of this software is strictly prohibited.
  * See LICENSE file for details.
@@ -15,12 +16,11 @@ import {
   VideoOff, MicOff, Reply, Forward, CornerUpRight,
   Timer, CheckSquare, Edit3, Pin, Star, Search,
   Image as ImageIcon, Download, Archive, SmilePlus,
-  MapPin, Navigation, Bell, Clock, DollarSign, Languages,
+  Navigation, Bell, DollarSign,
 } from 'lucide-react';
 import LocationShareButton from '@/components/messaging/LocationShareButton';
 import AudioSpeedPlayer from '@/components/chat/AudioSpeedPlayer';
 import TranslateButton from '@/components/chat/TranslateButton';
-import PaymentRequestCard from '@/components/chat/PaymentRequestCard';
 import { usePaymentRequests } from '@/hooks/usePaymentRequests';
 import { useAutoTranslate } from '@/hooks/useAutoTranslate';
 import ScheduleSendPicker from '@/components/chat/ScheduleSendPicker';
@@ -56,7 +56,7 @@ import MessageStatusIcon from '@/components/chat/MessageStatusIcon';
 import LinkPreviewCard from '@/components/chat/LinkPreviewCard';
 
 // v8 types
-import type { Reaction, MessageReactions } from '@/hooks/useMessageReactions';
+import type { MessageReactions } from '@/hooks/useMessageReactions';
 import type { EditState } from '@/hooks/useMessageEdit';
 import type { PinnedMessage } from '@/hooks/usePinnedMessages';
 import type { DeliveryState } from '@/hooks/useDeliveryStatus';
@@ -76,15 +76,15 @@ export interface Message {
   createdAt: string;
   replyTo: string | null;
   isForwarded: boolean;
-  expiresAt?: string | null;
-  iv?: string | null;
-  editedAt?: string | null;
+  expiresAt?: string | null | undefined;
+  iv?: string | null | undefined;
+  editedAt?: string | null | undefined;
 }
 
 interface ChatWindowProps {
   currentUserId: string;
   currentUserName: string;
-  currentUserAvatar?: string | null;
+  currentUserAvatar?: string | null | undefined;
   otherUser: {
     id: string;
     fullName: string;
@@ -102,42 +102,42 @@ interface ChatWindowProps {
   onMute: () => void;
   onDelete: () => void;
   onForward: (message: Message) => void;
-  onDeleteMessage?: (messageId: string) => void;
-  onBulkDelete?: (ids: Set<string>) => void;
-  isEncrypted?: boolean;
+  onDeleteMessage?: ((messageId: string) => void) | undefined;
+  onBulkDelete?: ((ids: Set<string>) => void) | undefined;
+  isEncrypted?: boolean | undefined;
   isMuted: boolean;
   isBlocked: boolean;
-  autoAcceptCall?: 'audio' | 'video' | null;
+  autoAcceptCall?: 'audio' | 'video' | null | undefined;
   // — v8 props —
-  reactions?: MessageReactions;
-  onToggleReaction?: (messageId: string, emoji: string) => void;
-  editingMessage?: EditState | null;
-  onStartEdit?: (messageId: string, content: string) => void;
-  onCancelEdit?: () => void;
-  onSaveEdit?: (newContent: string) => Promise<boolean>;
-  canEditMessage?: (senderId: string, createdAt: string) => boolean;
-  pinnedMessages?: PinnedMessage[];
-  onPinMessage?: (messageId: string, content: string) => void;
-  onUnpinMessage?: (pinId: string) => void;
-  onShowPinned?: () => void;
-  deliveryStatus?: { getStatus: (messageId: string, isRead?: boolean) => DeliveryState };
-  starredMessages?: { isStarred: (messageId: string) => boolean };
-  onToggleStar?: (messageId: string, content: string) => void;
-  onArchive?: () => void;
-  isArchived?: boolean;
-  onExport?: (format: 'txt' | 'json' | 'csv') => void;
-  onOpenSearch?: () => void;
-  onOpenMedia?: () => void;
-  onJumpToMessage?: (messageId: string) => void;
-  draft?: string;
-  wallpaper?: string | null;
-  linkPreview?: { previews: Map<string, LinkPreviewData>; extractUrl: (text: string) => string | null; fetchPreview: (url: string) => Promise<LinkPreviewData | null> };
-  threadReplies?: { openThread: (parentId: string, parentContent: string, parentSender: string, table: 'private_messages' | 'group_messages') => void };
-  onCreateReminder?: () => void;
-  onScheduleSend?: (content: string, sendAt: Date) => void;
-  onRequestPayment?: () => void;
-  paymentRequests?: ReturnType<typeof usePaymentRequests>;
-  otherUserName?: string;
+  reactions?: MessageReactions | undefined;
+  onToggleReaction?: ((messageId: string, emoji: string) => void) | undefined;
+  editingMessage?: EditState | null | undefined;
+  onStartEdit?: ((messageId: string, content: string) => void) | undefined;
+  onCancelEdit?: (() => void) | undefined;
+  onSaveEdit?: ((newContent: string) => Promise<boolean>) | undefined;
+  canEditMessage?: ((senderId: string, createdAt: string) => boolean) | undefined;
+  pinnedMessages?: PinnedMessage[] | undefined;
+  onPinMessage?: ((messageId: string, content: string) => void) | undefined;
+  onUnpinMessage?: ((pinId: string) => void) | undefined;
+  onShowPinned?: (() => void) | undefined;
+  deliveryStatus?: { getStatus: (messageId: string, isRead?: boolean) => DeliveryState } | undefined;
+  starredMessages?: { isStarred: (messageId: string) => boolean } | undefined;
+  onToggleStar?: ((messageId: string, content: string) => void) | undefined;
+  onArchive?: (() => void) | undefined;
+  isArchived?: boolean | undefined;
+  onExport?: ((format: 'txt' | 'json' | 'csv') => void) | undefined;
+  onOpenSearch?: (() => void) | undefined;
+  onOpenMedia?: (() => void) | undefined;
+  onJumpToMessage?: ((messageId: string) => void) | undefined;
+  draft?: string | undefined;
+  wallpaper?: string | null | undefined;
+  linkPreview?: { previews: Map<string, LinkPreviewData>; extractUrl: (text: string) => string | null; fetchPreview: (url: string) => Promise<LinkPreviewData | null> } | undefined;
+  threadReplies?: { openThread: (parentId: string, parentContent: string, parentSender: string, table: 'private_messages' | 'group_messages') => void } | undefined;
+  onCreateReminder?: (() => void) | undefined;
+  onScheduleSend?: ((content: string, sendAt: Date) => void) | undefined;
+  onRequestPayment?: (() => void) | undefined;
+  paymentRequests?: ReturnType<typeof usePaymentRequests> | undefined;
+  otherUserName?: string | undefined;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -197,7 +197,7 @@ function truncateText(text: string, max: number): string {
 function isLocationJSON(text: string): boolean {
   try {
     const p = JSON.parse(text);
-    return typeof p.lat === 'number' && typeof p.lng === 'number';
+    return typeof p['lat'] === 'number' && typeof p['lng'] === 'number';
   } catch {
     return false;
   }
@@ -246,7 +246,6 @@ const DecryptedBubble: React.FC<{
 
   return <div className="mensajes-msg-bubble" id={`msg-${msg.id}`}>{displayText}</div>;
 };
-
 // ═══════════════════════════════════════════════════════════════════════════
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
@@ -254,7 +253,7 @@ const DecryptedBubble: React.FC<{
 const ChatWindow: React.FC<ChatWindowProps> = ({
   currentUserId,
   currentUserName,
-  currentUserAvatar,
+  currentUserAvatar: _currentUserAvatar,
   otherUser,
   messages,
   conversationId,
@@ -271,7 +270,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   isEncrypted = false,
   isMuted,
   isBlocked,
-  autoAcceptCall = null,
+  autoAcceptCall: _autoAcceptCall = null,
   reactions,
   onToggleReaction,
   editingMessage,
@@ -279,10 +278,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onCancelEdit,
   onSaveEdit,
   canEditMessage,
-  pinnedMessages,
+  pinnedMessages: _pinnedMessages,
   onPinMessage,
-  onUnpinMessage,
-  onShowPinned,
+  onUnpinMessage: _onUnpinMessage,
+  onShowPinned: _onShowPinned,
   deliveryStatus,
   starredMessages,
   onToggleStar,
@@ -291,7 +290,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onExport,
   onOpenSearch,
   onOpenMedia,
-  onJumpToMessage,
+  onJumpToMessage: _onJumpToMessage,
   draft,
   wallpaper,
   linkPreview,
@@ -346,16 +345,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     if (!currentUserId || !otherUser?.id || !conversationId) return;
     if (activeCall?.active) { toast.error('Ya estas en una llamada'); return; }
     try { await initiateCall(otherUser.id, type, conversationId); }
-    catch (err: any) { toast.error(err.message || 'Error al iniciar la llamada'); }
+    catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Error al iniciar la llamada'); }
   }, [currentUserId, otherUser?.id, conversationId, initiateCall, activeCall]);
 
   const autoTranslate = useAutoTranslate('es');
 
   const parsePaymentMsg = (content: string) => {
     const m5 = content.match(/^\[PAYMENT_REQUEST:([a-f0-9-]+):(\d+(?:\.\d+)?):([A-Z]+):([a-f0-9-]+):(.*)?\]$/);
-    if (m5) return { id: m5[1], amount: parseFloat(m5[2]), currency: m5[3], requesterId: m5[4], desc: m5[5] || '' };
+    if (m5) {
+      const id = m5[1]; const amt = m5[2]; const cur = m5[3]; const rid = m5[4]; const desc = m5[5];
+      if (id && amt && cur && rid) return { id, amount: parseFloat(amt), currency: cur, requesterId: rid, desc: desc || '' };
+    }
     const m3 = content.match(/^\[PAYMENT_REQUEST:([a-f0-9-]+):(\d+(?:\.\d+)?):(.*)?\]$/);
-    if (m3) return { id: m3[1], amount: parseFloat(m3[2]), currency: 'MXN', requesterId: '', desc: m3[3] || '' };
+    if (m3) {
+      const id = m3[1]; const amt = m3[2]; const desc = m3[3];
+      if (id && amt) return { id, amount: parseFloat(amt), currency: 'MXN', requesterId: '', desc: desc || '' };
+    }
     return null;
   };
 
@@ -503,8 +508,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     let successCount = 0; let failCount = 0;
     for (let i = 0; i < validFiles.length; i++) {
       setUploadProgress({ current: i + 1, total: validFiles.length });
+      const currentFile = validFiles[i];
+      if (!currentFile) { failCount++; continue; }
       try {
-        const result = await uploadFile(validFiles[i]);
+        const result = await uploadFile(currentFile);
         if (result) { onSendMessage('', result.url, result.type, replyingTo?.id); successCount++; }
         else failCount++;
       } catch { failCount++; }
@@ -589,6 +596,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleBulkForward = useCallback(() => {
     const firstId = Array.from(bulkSelect.selectedIds)[0];
+    if (!firstId) return;
     const msg = messageMap.get(firstId);
     if (msg) onForward(msg);
     bulkSelect.stopSelecting();
@@ -601,8 +609,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [bulkSelect, messageMap]);
 
   const groupedMessages = groupMessagesByDate(visibleMessages);
-
-  // ═══════════════════════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -743,9 +750,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         {visibleMessages.length === 0 ? (
           <div className="mensajes-empty-state"><p>Envia un mensaje para iniciar la conversacion</p></div>
         ) : (
-          Array.from(groupedMessages.entries()).map(([dateKey, msgs]) => (
+          Array.from(groupedMessages.entries()).map(([dateKey, msgs]) => {
+            const firstMsg = msgs[0];
+            if (!firstMsg) return null;
+            return (
             <React.Fragment key={dateKey}>
-              <div className="mensajes-date-divider"><span>{formatDate(msgs[0].createdAt)}</span></div>
+              <div className="mensajes-date-divider"><span>{formatDate(firstMsg.createdAt)}</span></div>
               {msgs.map((msg) => {
                 const isSent = msg.senderId === currentUserId;
                 const repliedMsg = msg.replyTo ? messageMap.get(msg.replyTo) : null;
@@ -916,7 +926,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 );
               })}
             </React.Fragment>
-          ))
+            );
+          })
         )}
         {isOtherTyping && <TypingIndicator userName={otherUser.fullName} activity={otherActivity} />}
         <div ref={messagesEndRef} />
@@ -927,18 +938,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         <div style={{ position: 'fixed', left: contextMenu.x, top: contextMenu.y, background: 'var(--mc-sidebar)', border: '1px solid var(--mc-border)', borderRadius: '0', padding: '4px', zIndex: 100, minWidth: '160px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
           <button className="mensajes-settings-item" onClick={() => handleReply(contextMenu.msgId)}><Reply size={16} /> Responder</button>
           <button className="mensajes-settings-item" onClick={() => handleForward(contextMenu.msgId)}><Forward size={16} /> Reenviar</button>
-          {onToggleStar && (
-            <button className="mensajes-settings-item" onClick={() => { const msg = messageMap.get(contextMenu.msgId); if (msg) onToggleStar(msg.id, msg.content); setContextMenu(null); }}><Star size={16} /> {starredMessages?.isStarred(contextMenu.msgId) ? 'Desmarcar' : 'Destacar'}</button>
-          )}
-          {onPinMessage && (
-            <button className="mensajes-settings-item" onClick={() => { const msg = messageMap.get(contextMenu.msgId); if (msg) onPinMessage(msg.id, msg.content); setContextMenu(null); }}><Pin size={16} /> Fijar</button>
-          )}
-          {(() => { const msg = messageMap.get(contextMenu.msgId); return msg && msg.senderId === currentUserId && onStartEdit && canEditMessage?.(msg.senderId, msg.createdAt); })() && (
-            <button className="mensajes-settings-item" onClick={() => { const msg = messageMap.get(contextMenu.msgId); if (msg && onStartEdit) onStartEdit(msg.id, msg.content); setContextMenu(null); }}><Edit3 size={16} /> Editar</button>
-          )}
-          {threadReplies && (
-            <button className="mensajes-settings-item" onClick={() => { const msg = messageMap.get(contextMenu.msgId); if (msg) threadReplies.openThread(msg.id, msg.content, msg.senderId === currentUserId ? currentUserName : otherUser.fullName, 'private_messages'); setContextMenu(null); }}><Reply size={16} /> Hilo</button>
-          )}
+          {onToggleStar && (() => { const ctxMsg = messageMap.get(contextMenu.msgId); if (!ctxMsg) return null; return (
+            <button className="mensajes-settings-item" onClick={() => { onToggleStar(ctxMsg.id, ctxMsg.content); setContextMenu(null); }}><Star size={16} /> {starredMessages?.isStarred(contextMenu.msgId) ? 'Desmarcar' : 'Destacar'}</button>
+          ); })()}
+          {onPinMessage && (() => { const ctxMsg = messageMap.get(contextMenu.msgId); if (!ctxMsg) return null; return (
+            <button className="mensajes-settings-item" onClick={() => { onPinMessage(ctxMsg.id, ctxMsg.content); setContextMenu(null); }}><Pin size={16} /> Fijar</button>
+          ); })()}
+          {(() => { const ctxMsg = messageMap.get(contextMenu.msgId); if (!ctxMsg) return null; return ctxMsg.senderId === currentUserId && onStartEdit && canEditMessage?.(ctxMsg.senderId, ctxMsg.createdAt) ? (
+            <button className="mensajes-settings-item" onClick={() => { if (onStartEdit) onStartEdit(ctxMsg.id, ctxMsg.content); setContextMenu(null); }}><Edit3 size={16} /> Editar</button>
+          ) : null; })()}
+          {threadReplies && (() => { const ctxMsg = messageMap.get(contextMenu.msgId); if (!ctxMsg) return null; return (
+            <button className="mensajes-settings-item" onClick={() => { threadReplies.openThread(ctxMsg.id, ctxMsg.content, ctxMsg.senderId === currentUserId ? currentUserName : otherUser.fullName, 'private_messages'); setContextMenu(null); }}><Reply size={16} /> Hilo</button>
+          ); })()}
           {onDeleteMessage && (
             <button className="mensajes-settings-item" style={{ color: '#ef4444' }} onClick={() => handleDeleteMsg(contextMenu.msgId)}><Trash2 size={16} /> Eliminar</button>
           )}
@@ -979,7 +990,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         </div>
       )}
 
-      {/* ────────── Reply Bar ───────���── */}
+      {/* ────────── Reply Bar ────────── */}
       {replyingTo && !isBlocked && !editingMessage && (
         <div style={{ padding: '8px 20px', background: 'var(--mc-sidebar)', borderTop: '1px solid var(--mc-border)', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '2px', height: '36px', background: 'var(--mc-blue)', flexShrink: 0 }} />
@@ -1015,7 +1026,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
           {audioRecorder.isRecording ? (
             <div style={{ flex: 1 }}>
-              <AudioRecorderButton isRecording={audioRecorder.isRecording} duration={audioRecorder.duration} isSupported={audioRecorder.isSupported} onStart={() => { audioRecorder.startRecording(); sendRecording(); }} onStop={handleAudioSend} onCancel={() => { audioRecorder.cancelRecording(); sendStopTyping(); }} />
+              <AudioRecorderButton isRecording={audioRecorder.isRecording} duration={audioRecorder.duration} isSupported={audioRecorder.isSupported} onStart={async () => { if (await audioRecorder.startRecording()) sendRecording(); }} onStop={handleAudioSend} onCancel={() => { audioRecorder.cancelRecording(); sendStopTyping(); }} />
             </div>
           ) : (
             <>
@@ -1035,7 +1046,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   </button>
                 </div>
               ) : !editingMessage ? (
-                <AudioRecorderButton isRecording={false} duration={0} isSupported={audioRecorder.isSupported} onStart={() => { audioRecorder.startRecording(); sendRecording(); }} onStop={handleAudioSend} onCancel={() => {}} />
+                <AudioRecorderButton isRecording={false} duration={0} isSupported={audioRecorder.isSupported} onStart={async () => { if (await audioRecorder.startRecording()) sendRecording(); }} onStop={handleAudioSend} onCancel={() => {}} />
               ) : null}
             </>
           )}
@@ -1047,4 +1058,4 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   );
 };
 
-export default ChatWindow;
+export default ChatWindow;    

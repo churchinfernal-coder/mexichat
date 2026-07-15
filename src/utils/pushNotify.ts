@@ -29,11 +29,14 @@ export async function sendPushNotification(payload: PushPayload): Promise<void> 
       return;
     }
 
+    const idempotencyKey = `push:${Date.now()}:${crypto.randomUUID().replace(/-/g, '')}`;
+
     const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
+        'x-idempotency-key': idempotencyKey,
       },
       body: JSON.stringify({
         targetUserId: payload.targetUserId,
