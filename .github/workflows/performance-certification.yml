@@ -43,7 +43,7 @@ jobs:
           PERF_STAGE2_DURATION: ${{ vars.PERF_STAGE2_DURATION }}
           PERF_STAGE3_DURATION: ${{ vars.PERF_STAGE3_DURATION }}
           PERF_STAGE4_DURATION: ${{ vars.PERF_STAGE4_DURATION }}
-        run: npm run -s perf:certify
+        run: mkdir -p perf-artifacts && npm run -s perf:certify
 
       - name: Build certification evidence
         if: always()
