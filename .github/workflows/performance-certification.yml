@@ -1,0 +1,50 @@
+name: Performance Certification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  perf-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 certification profile
+        env:
+          PERF_BASE_URL: ${{ secrets.PERF_BASE_URL }}
+          EDGE_HEALTH_URLS: ${{ secrets.EDGE_HEALTH_URLS }}
+          PERF_P95_MS: ${{ vars.PERF_P95_MS }}
+          PERF_P99_MS: ${{ vars.PERF_P99_MS }}
+          PERF_MAX_FAILED_RATE: ${{ vars.PERF_MAX_FAILED_RATE }}
+          PERF_MIN_CHECK_RATE: ${{ vars.PERF_MIN_CHECK_RATE }}
+          PERF_STAGE1_VUS: ${{ vars.PERF_STAGE1_VUS }}
+          PERF_STAGE2_VUS: ${{ vars.PERF_STAGE2_VUS }}
+          PERF_STAGE3_VUS: ${{ vars.PERF_STAGE3_VUS }}
+        run: npm run -s perf:certify
+
+      - name: Build certification evidence
+        run: npm run -s perf:evidence
+
+      - name: Upload certification artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-certification-${{ github.run_number }}
+          path: perf-artifacts/
+          if-no-files-found: error

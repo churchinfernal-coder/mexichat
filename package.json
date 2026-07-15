@@ -11,7 +11,10 @@
     "preview": "vite preview",
     "smoke:deploy": "node scripts/deployment-readiness-smoke.cjs",
     "smoke:edge-security": "node scripts/edge-security-smoke.cjs",
-    "smoke:release": "node scripts/release-readiness-smoke.cjs"
+    "smoke:release": "node scripts/release-readiness-smoke.cjs",
+    "perf:certify": "k6 run perf/k6/certification.js --summary-export=perf-artifacts/summary.json",
+    "perf:evidence": "node scripts/perf-certification-evidence.cjs perf-artifacts/summary.json perf-artifacts/evidence.json perf-artifacts/evidence.md",
+    "perf:gate": "npm run -s perf:certify && npm run -s perf:evidence"
   },
   "dependencies": {
     "@alloc/quick-lru": "^5.2.0",

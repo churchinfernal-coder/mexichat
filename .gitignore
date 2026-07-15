@@ -53,6 +53,7 @@ android/local.properties
 dist/
 build/
 .cache/
+perf-artifacts/
 
 # â”€â”€â”€ IDE â”€â”€â”€
 .idea/
