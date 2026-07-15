@@ -44,6 +44,12 @@ function assertRange(name, value, min, max) {
   }
 }
 
+function assertDuration(name, value) {
+  if (!/^\d+(ms|s|m|h)$/.test(value)) {
+    throw new Error(`Environment variable ${name} must be a duration like 30s, 2m, 500ms`);
+  }
+}
+
 const baseUrl = normalizeBaseUrl(mustEnv('PERF_BASE_URL'));
 const edgeUrls = (__ENV.EDGE_HEALTH_URLS || '')
   .split(',')
@@ -67,9 +73,21 @@ for (const url of edgeUrls) {
   assertHttpsUrl(url, 'EDGE_HEALTH_URLS');
 }
 
+assertRange('PERF_P95_MS', durationP95Ms, 10, 600000);
+assertRange('PERF_P99_MS', durationP99Ms, 10, 600000);
+if (durationP99Ms < durationP95Ms) {
+  throw new Error('PERF_P99_MS must be greater than or equal to PERF_P95_MS');
+}
+assertRange('PERF_MAX_FAILED_RATE', maxFailedRate, 0, 1);
+assertRange('PERF_MIN_CHECK_RATE', minCheckRate, 0, 1);
+
 assertRange('PERF_STAGE1_VUS', stage1Vu, 1, 50000);
 assertRange('PERF_STAGE2_VUS', stage2Vu, 1, 50000);
 assertRange('PERF_STAGE3_VUS', stage3Vu, 1, 50000);
+assertDuration('PERF_STAGE1_DURATION', stage1Duration);
+assertDuration('PERF_STAGE2_DURATION', stage2Duration);
+assertDuration('PERF_STAGE3_DURATION', stage3Duration);
+assertDuration('PERF_STAGE4_DURATION', stage4Duration);
 
 export const options = {
   discardResponseBodies: true,

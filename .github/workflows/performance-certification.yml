@@ -34,6 +34,40 @@ jobs:
       - name: Setup k6
         uses: grafana/setup-k6-action@v1
 
+      - name: Preflight configuration
+        env:
+          PERF_BASE_URL: ${{ secrets.PERF_BASE_URL }}
+          EDGE_HEALTH_URLS: ${{ secrets.EDGE_HEALTH_URLS }}
+          PERF_P95_MS: ${{ vars.PERF_P95_MS }}
+          PERF_P99_MS: ${{ vars.PERF_P99_MS }}
+          PERF_MAX_FAILED_RATE: ${{ vars.PERF_MAX_FAILED_RATE }}
+          PERF_MIN_CHECK_RATE: ${{ vars.PERF_MIN_CHECK_RATE }}
+          PERF_STAGE1_VUS: ${{ vars.PERF_STAGE1_VUS }}
+          PERF_STAGE2_VUS: ${{ vars.PERF_STAGE2_VUS }}
+          PERF_STAGE3_VUS: ${{ vars.PERF_STAGE3_VUS }}
+          PERF_STAGE1_DURATION: ${{ vars.PERF_STAGE1_DURATION }}
+          PERF_STAGE2_DURATION: ${{ vars.PERF_STAGE2_DURATION }}
+          PERF_STAGE3_DURATION: ${{ vars.PERF_STAGE3_DURATION }}
+          PERF_STAGE4_DURATION: ${{ vars.PERF_STAGE4_DURATION }}
+        run: |
+          set -euo pipefail
+          mkdir -p perf-artifacts
+
+          if [ -z "${PERF_BASE_URL:-}" ]; then
+            echo "::error::PERF_BASE_URL is required"
+            exit 1
+          fi
+
+          case "$PERF_BASE_URL" in
+            https://*) ;;
+            *)
+              echo "::error::PERF_BASE_URL must use https://"
+              exit 1
+              ;;
+          esac
+
+          node -e "const fs=require('node:fs'); const base=process.env.PERF_BASE_URL; const edge=(process.env.EDGE_HEALTH_URLS||'').split(',').map(s=>s.trim()).filter(Boolean); const host=new URL(base).host; fs.writeFileSync('perf-artifacts/run-context.json', JSON.stringify({generatedAtUtc:new Date().toISOString(), githubRunId:process.env.GITHUB_RUN_ID, githubRunAttempt:process.env.GITHUB_RUN_ATTEMPT, githubRef:process.env.GITHUB_REF, githubSha:process.env.GITHUB_SHA, perfBaseHost:host, edgeHealthUrlCount:edge.length, profile:{p95Ms:process.env.PERF_P95_MS||'default', p99Ms:process.env.PERF_P99_MS||'default', maxFailedRate:process.env.PERF_MAX_FAILED_RATE||'default', minCheckRate:process.env.PERF_MIN_CHECK_RATE||'default', stage1Vus:process.env.PERF_STAGE1_VUS||'default', stage2Vus:process.env.PERF_STAGE2_VUS||'default', stage3Vus:process.env.PERF_STAGE3_VUS||'default', stage1Duration:process.env.PERF_STAGE1_DURATION||'default', stage2Duration:process.env.PERF_STAGE2_DURATION||'default', stage3Duration:process.env.PERF_STAGE3_DURATION||'default', stage4Duration:process.env.PERF_STAGE4_DURATION||'default'}}, null, 2));"
+
       - name: Run k6 certification profile
         continue-on-error: true
         env:

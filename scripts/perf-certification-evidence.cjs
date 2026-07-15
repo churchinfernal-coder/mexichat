@@ -2,6 +2,7 @@
 /* eslint-disable no-console */
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 
 function usage() {
   console.error('Usage: node scripts/perf-certification-evidence.cjs <summary.json> <evidence.json> <evidence.md>');
@@ -16,7 +17,11 @@ function loadJson(filePath) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Summary file not found: ${filePath}`);
   }
-  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const raw = fs.readFileSync(filePath, 'utf8');
+  return {
+    raw,
+    parsed: JSON.parse(raw),
+  };
 }
 
 function getMetricValue(metrics, metricName, valueName, fallback = null) {
@@ -46,30 +51,30 @@ function evaluateComparator(left, operator, right) {
 }
 
 function evaluateThreshold(metrics, metricName, thresholdExpr) {
-  const rateMatch = thresholdExpr.match(/^rate\s*(<=|>=|<|>)\s*([0-9]*\.?[0-9]+)$/);
+  const rateMatch = thresholdExpr.match(/^rate\s*(<=|>=|<|>)\s*([+-]?[0-9]*\.?[0-9]+(?:e[+-]?[0-9]+)?)$/i);
   if (rateMatch) {
     const [, operator, valueRaw] = rateMatch;
     const left = getMetricValue(metrics, metricName, 'rate', null);
     const right = Number(valueRaw);
     if (typeof left === 'number' && Number.isFinite(left) && Number.isFinite(right)) {
-      return evaluateComparator(left, operator, right);
+      return { passed: evaluateComparator(left, operator, right), observed: left, expected: right, operator };
     }
-    return null;
+    return { passed: null, observed: left, expected: right, operator };
   }
 
-  const percentileMatch = thresholdExpr.match(/^p\((\d+)\)\s*(<=|>=|<|>)\s*([0-9]*\.?[0-9]+)$/);
+  const percentileMatch = thresholdExpr.match(/^p\((\d+)\)\s*(<=|>=|<|>)\s*([+-]?[0-9]*\.?[0-9]+(?:e[+-]?[0-9]+)?)$/i);
   if (percentileMatch) {
     const [, percentileRaw, operator, valueRaw] = percentileMatch;
     const key = `p(${percentileRaw})`;
     const left = getMetricValue(metrics, metricName, key, null);
     const right = Number(valueRaw);
     if (typeof left === 'number' && Number.isFinite(left) && Number.isFinite(right)) {
-      return evaluateComparator(left, operator, right);
+      return { passed: evaluateComparator(left, operator, right), observed: left, expected: right, operator };
     }
-    return null;
+    return { passed: null, observed: left, expected: right, operator };
   }
 
-  return null;
+  return { passed: null, observed: null, expected: null, operator: null };
 }
 
 function collectThresholds(metrics) {
@@ -78,11 +83,17 @@ function collectThresholds(metrics) {
     const thresholds = metric?.thresholds || {};
     for (const [thresholdExpr, rawStatus] of Object.entries(thresholds)) {
       const computed = evaluateThreshold(metrics, metricName, thresholdExpr);
-      const passed = typeof computed === 'boolean' ? computed : Boolean(rawStatus);
+      const rawStatusBool = rawStatus === true;
+      const passed = typeof computed.passed === 'boolean' ? computed.passed : rawStatusBool;
+      const evaluationSource = typeof computed.passed === 'boolean' ? 'computed' : 'k6-raw';
       rows.push({
         metric: metricName,
         threshold: thresholdExpr,
         passed,
+        observed: toFixedMaybe(computed.observed, 6),
+        expected: toFixedMaybe(computed.expected, 6),
+        operator: computed.operator,
+        evaluationSource,
       });
     }
   }
@@ -94,8 +105,8 @@ function toFixedMaybe(value, digits = 2) {
   return Number(value.toFixed(digits));
 }
 
-function buildEvidence(summary) {
-  const metrics = summary.metrics || {};
+function buildEvidence(summaryBundle) {
+  const metrics = summaryBundle.parsed.metrics || {};
   const thresholds = collectThresholds(metrics);
 
   if (thresholds.length === 0) {
@@ -105,9 +116,23 @@ function buildEvidence(summary) {
   const failedThresholds = thresholds.filter((t) => !t.passed);
   const passed = failedThresholds.length === 0;
 
+  const summarySha256 = crypto
+    .createHash('sha256')
+    .update(summaryBundle.raw, 'utf8')
+    .digest('hex');
+
   return {
     generatedAtUtc: new Date().toISOString(),
     result: passed ? 'PASS' : 'FAIL',
+    context: {
+      githubRunId: process.env.GITHUB_RUN_ID || null,
+      githubRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+      githubSha: process.env.GITHUB_SHA || null,
+      githubRef: process.env.GITHUB_REF || null,
+    },
+    integrity: {
+      summarySha256,
+    },
     totals: {
       thresholds: thresholds.length,
       failedThresholds: failedThresholds.length,
@@ -128,14 +153,58 @@ function buildEvidence(summary) {
   };
 }
 
+function buildErrorEvidence(error) {
+  return {
+    generatedAtUtc: new Date().toISOString(),
+    result: 'ERROR',
+    context: {
+      githubRunId: process.env.GITHUB_RUN_ID || null,
+      githubRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+      githubSha: process.env.GITHUB_SHA || null,
+      githubRef: process.env.GITHUB_REF || null,
+    },
+    error: {
+      message: String(error && error.message ? error.message : error),
+    },
+    totals: {
+      thresholds: 0,
+      failedThresholds: 0,
+    },
+    traffic: {
+      httpRequests: null,
+      requestsPerSecond: null,
+      checksPassRate: null,
+      failedRate: null,
+    },
+    latencyMs: {
+      p50: null,
+      p95: null,
+      p99: null,
+      max: null,
+    },
+    thresholds: [],
+  };
+}
+
 function renderMarkdown(evidence) {
   const lines = [];
   lines.push('# Performance Certification Evidence');
   lines.push('');
   lines.push(`- Result: **${evidence.result}**`);
   lines.push(`- Generated (UTC): ${evidence.generatedAtUtc}`);
+  if (evidence.context) {
+    lines.push(`- GitHub run: ${evidence.context.githubRunId || 'n/a'} (attempt ${evidence.context.githubRunAttempt || 'n/a'})`);
+    lines.push(`- Git ref: ${evidence.context.githubRef || 'n/a'}`);
+    lines.push(`- Git SHA: ${evidence.context.githubSha || 'n/a'}`);
+  }
+  if (evidence.integrity?.summarySha256) {
+    lines.push(`- Summary SHA-256: ${evidence.integrity.summarySha256}`);
+  }
   lines.push(`- Thresholds: ${evidence.totals.thresholds}`);
   lines.push(`- Failed thresholds: ${evidence.totals.failedThresholds}`);
+  if (evidence.error?.message) {
+    lines.push(`- Error: ${evidence.error.message}`);
+  }
   lines.push('');
   lines.push('## Traffic');
   lines.push('');
@@ -153,10 +222,11 @@ function renderMarkdown(evidence) {
   lines.push('');
   lines.push('## Threshold Results');
   lines.push('');
-  lines.push('| Metric | Threshold | Passed |');
-  lines.push('|---|---|---|');
+  lines.push('| Metric | Threshold | Observed | Passed | Source |');
+  lines.push('|---|---|---|---|---|');
   for (const row of evidence.thresholds) {
-    lines.push(`| ${row.metric} | ${row.threshold} | ${row.passed ? 'yes' : 'no'} |`);
+    const observed = row.observed === null ? 'n/a' : String(row.observed);
+    lines.push(`| ${row.metric} | ${row.threshold} | ${observed} | ${row.passed ? 'yes' : 'no'} | ${row.evaluationSource || 'n/a'} |`);
   }
   lines.push('');
   return `${lines.join('\n')}\n`;
@@ -166,9 +236,16 @@ function main() {
   const [summaryPath, evidenceJsonPath, evidenceMdPath] = process.argv.slice(2);
   if (!summaryPath || !evidenceJsonPath || !evidenceMdPath) usage();
 
-  const summary = loadJson(summaryPath);
-  const evidence = buildEvidence(summary);
-  const markdown = renderMarkdown(evidence);
+  let evidence;
+  let markdown;
+  try {
+    const summary = loadJson(summaryPath);
+    evidence = buildEvidence(summary);
+    markdown = renderMarkdown(evidence);
+  } catch (error) {
+    evidence = buildErrorEvidence(error);
+    markdown = renderMarkdown(evidence);
+  }
 
   ensureDir(evidenceJsonPath);
   ensureDir(evidenceMdPath);

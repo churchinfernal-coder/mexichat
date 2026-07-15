@@ -7,6 +7,7 @@ This repository includes a repeatable performance-certification pipeline based o
 - `perf-artifacts/summary.json`: raw k6 summary export
 - `perf-artifacts/evidence.json`: machine-readable certification evidence
 - `perf-artifacts/evidence.md`: human-readable evidence report
+- `perf-artifacts/run-context.json`: run metadata (commit/ref/profile), no secrets
 
 ## Local run
 
@@ -75,3 +76,5 @@ Certification is PASS only when all configured thresholds pass. The evidence scr
 - Local insecure testing is blocked by default; use `PERF_ALLOW_INSECURE_LOCAL=1` only for localhost.
 - VU stage values are range-validated to prevent accidental extreme runs.
 - Workflow uses branch-scoped concurrency and least-privilege `contents: read` permissions.
+- Workflow preflight fails fast if required config is missing or insecure.
+- Evidence includes summary SHA-256 and GitHub run metadata for audit traceability.
