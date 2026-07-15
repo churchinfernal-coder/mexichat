@@ -54,6 +54,8 @@ dist/
 build/
 .cache/
 perf-artifacts/
+perf-artifacts-ci/
+perf-artifacts-ci-pass/
 
 # â”€â”€â”€ IDE â”€â”€â”€
 .idea/

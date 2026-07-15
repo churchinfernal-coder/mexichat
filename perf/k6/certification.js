@@ -28,6 +28,22 @@ function normalizeBaseUrl(url) {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
 
+function assertHttpsUrl(url, envName) {
+  const parsed = new URL(url);
+  const isLocalhost = ['localhost', '127.0.0.1'].includes(parsed.hostname);
+  const allowInsecureLocal = (__ENV.PERF_ALLOW_INSECURE_LOCAL || '').trim() === '1';
+
+  if (parsed.protocol !== 'https:' && !(allowInsecureLocal && isLocalhost)) {
+    throw new Error(`${envName} must use https:// (or set PERF_ALLOW_INSECURE_LOCAL=1 for localhost testing)`);
+  }
+}
+
+function assertRange(name, value, min, max) {
+  if (value < min || value > max) {
+    throw new Error(`Environment variable ${name} out of range: ${value}. Expected ${min}..${max}`);
+  }
+}
+
 const baseUrl = normalizeBaseUrl(mustEnv('PERF_BASE_URL'));
 const edgeUrls = (__ENV.EDGE_HEALTH_URLS || '')
   .split(',')
@@ -45,6 +61,15 @@ const stage1Duration = parseDurationEnv('PERF_STAGE1_DURATION', '2m');
 const stage2Duration = parseDurationEnv('PERF_STAGE2_DURATION', '3m');
 const stage3Duration = parseDurationEnv('PERF_STAGE3_DURATION', '3m');
 const stage4Duration = parseDurationEnv('PERF_STAGE4_DURATION', '2m');
+
+assertHttpsUrl(baseUrl, 'PERF_BASE_URL');
+for (const url of edgeUrls) {
+  assertHttpsUrl(url, 'EDGE_HEALTH_URLS');
+}
+
+assertRange('PERF_STAGE1_VUS', stage1Vu, 1, 50000);
+assertRange('PERF_STAGE2_VUS', stage2Vu, 1, 50000);
+assertRange('PERF_STAGE3_VUS', stage3Vu, 1, 50000);
 
 export const options = {
   discardResponseBodies: true,

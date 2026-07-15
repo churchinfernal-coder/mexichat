@@ -24,6 +24,7 @@ PERF_BASE_URL=https://your-app.example.com npm run -s perf:gate
 Optional environment variables:
 
 - `EDGE_HEALTH_URLS`: comma-separated URLs for edge health checks
+- `PERF_ALLOW_INSECURE_LOCAL`: set `1` only for localhost HTTP testing
 - `PERF_P95_MS` (default `800`)
 - `PERF_P99_MS` (default `2000`)
 - `PERF_MAX_FAILED_RATE` (default `0.01`)
@@ -67,3 +68,10 @@ Optional GitHub variables:
 ## Pass criteria
 
 Certification is PASS only when all configured thresholds pass. The evidence script exits non-zero on failure.
+
+## Safety controls
+
+- `PERF_BASE_URL` and each URL in `EDGE_HEALTH_URLS` must be `https://`.
+- Local insecure testing is blocked by default; use `PERF_ALLOW_INSECURE_LOCAL=1` only for localhost.
+- VU stage values are range-validated to prevent accidental extreme runs.
+- Workflow uses branch-scoped concurrency and least-privilege `contents: read` permissions.
