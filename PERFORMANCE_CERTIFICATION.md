@@ -31,6 +31,10 @@ Optional environment variables:
 - `PERF_STAGE1_VUS` (default `50`)
 - `PERF_STAGE2_VUS` (default `200`)
 - `PERF_STAGE3_VUS` (default `400`)
+- `PERF_STAGE1_DURATION` (default `2m`)
+- `PERF_STAGE2_DURATION` (default `3m`)
+- `PERF_STAGE3_DURATION` (default `3m`)
+- `PERF_STAGE4_DURATION` (default `2m`)
 
 ## CI run
 
@@ -55,6 +59,10 @@ Optional GitHub variables:
 - `PERF_STAGE1_VUS`
 - `PERF_STAGE2_VUS`
 - `PERF_STAGE3_VUS`
+- `PERF_STAGE1_DURATION`
+- `PERF_STAGE2_DURATION`
+- `PERF_STAGE3_DURATION`
+- `PERF_STAGE4_DURATION`
 
 ## Pass criteria
 

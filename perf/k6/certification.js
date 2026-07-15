@@ -19,6 +19,11 @@ function parseNumberEnv(name, fallback) {
   return parsed;
 }
 
+function parseDurationEnv(name, fallback) {
+  const raw = (__ENV[name] || '').trim();
+  return raw || fallback;
+}
+
 function normalizeBaseUrl(url) {
   return url.endsWith('/') ? url.slice(0, -1) : url;
 }
@@ -36,6 +41,10 @@ const minCheckRate = parseNumberEnv('PERF_MIN_CHECK_RATE', 0.99);
 const stage1Vu = parseNumberEnv('PERF_STAGE1_VUS', 50);
 const stage2Vu = parseNumberEnv('PERF_STAGE2_VUS', 200);
 const stage3Vu = parseNumberEnv('PERF_STAGE3_VUS', 400);
+const stage1Duration = parseDurationEnv('PERF_STAGE1_DURATION', '2m');
+const stage2Duration = parseDurationEnv('PERF_STAGE2_DURATION', '3m');
+const stage3Duration = parseDurationEnv('PERF_STAGE3_DURATION', '3m');
+const stage4Duration = parseDurationEnv('PERF_STAGE4_DURATION', '2m');
 
 export const options = {
   discardResponseBodies: true,
@@ -44,10 +53,10 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 1,
       stages: [
-        { duration: '2m', target: stage1Vu },
-        { duration: '3m', target: stage2Vu },
-        { duration: '3m', target: stage3Vu },
-        { duration: '2m', target: 0 },
+        { duration: stage1Duration, target: stage1Vu },
+        { duration: stage2Duration, target: stage2Vu },
+        { duration: stage3Duration, target: stage3Vu },
+        { duration: stage4Duration, target: 0 },
       ],
       gracefulRampDown: '30s',
     },

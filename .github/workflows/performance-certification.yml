@@ -39,6 +39,10 @@ jobs:
           PERF_STAGE1_VUS: ${{ vars.PERF_STAGE1_VUS }}
           PERF_STAGE2_VUS: ${{ vars.PERF_STAGE2_VUS }}
           PERF_STAGE3_VUS: ${{ vars.PERF_STAGE3_VUS }}
+          PERF_STAGE1_DURATION: ${{ vars.PERF_STAGE1_DURATION }}
+          PERF_STAGE2_DURATION: ${{ vars.PERF_STAGE2_DURATION }}
+          PERF_STAGE3_DURATION: ${{ vars.PERF_STAGE3_DURATION }}
+          PERF_STAGE4_DURATION: ${{ vars.PERF_STAGE4_DURATION }}
         run: npm run -s perf:certify
 
       - name: Build certification evidence
