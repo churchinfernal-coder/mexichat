@@ -1,4 +1,5 @@
 name: Deployment Readiness
+# workflow-index-refresh: 2026-07-15
 
 on:
   pull_request:

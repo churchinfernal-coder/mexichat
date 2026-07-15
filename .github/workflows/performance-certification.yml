@@ -1,4 +1,5 @@
 name: Performance Certification
+# workflow-index-refresh: 2026-07-15
 
 on:
   workflow_dispatch:
