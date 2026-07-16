@@ -18,14 +18,25 @@ interface SecureStorageAdapter {
   removeItem(key: string): Promise<void>;
 }
 
+interface NativeCredentialRecord {
+  username: string;
+  password: string;
+}
+
+interface NativeBiometricClient {
+  setCredentials(input: { username: string; password: string; server: string }): Promise<void>;
+  getCredentials(input: { server: string }): Promise<NativeCredentialRecord>;
+  deleteCredentials(input: { server: string }): Promise<void>;
+}
+
 // ─── Native adapter: uses NativeBiometric Keychain/Keystore ───
 class NativeSecureStorage implements SecureStorageAdapter {
-  private mod: any = null;
+  private mod: NativeBiometricClient | null = null;
 
-  private async getBiometric() {
+  private async getBiometric(): Promise<NativeBiometricClient> {
     if (!this.mod) {
       const m = await import('capacitor-native-biometric');
-      this.mod = m.NativeBiometric;
+      this.mod = m.NativeBiometric as NativeBiometricClient;
     }
     return this.mod;
   }

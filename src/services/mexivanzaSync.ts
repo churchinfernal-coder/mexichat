@@ -75,3 +75,21 @@ export async function syncSignInToMexivanza(
     console.warn('[MexiVanza] SignIn sync error:', err);
   }
 }
+
+/**
+ * Best-effort sign-out from MexiVanza.
+ * This must not block primary MexiChat sign-out if MexiVanza is unavailable.
+ */
+export async function signOutMexivanza(): Promise<void> {
+  try {
+    const { error } = await mexivanza.auth.signOut();
+    if (error) {
+      console.warn('[MexiVanza] SignOut sync failed:', error.message);
+      return;
+    }
+
+    console.log('[MexiVanza] ✅ Signed out from MexiVanza');
+  } catch (err) {
+    console.warn('[MexiVanza] SignOut sync error:', err);
+  }
+}

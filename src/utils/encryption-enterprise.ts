@@ -95,7 +95,28 @@ interface AuditEvent {
   timestamp: number;
   event: string;
   severity: 'info' | 'warning' | 'critical';
-  details: any;
+  details: Record<string, unknown>;
+}
+
+interface UserDeviceRow {
+  device_info: unknown;
+  device_fingerprint: string | null;
+}
+
+function extractDeviceFingerprint(device: UserDeviceRow): string | null {
+  const info = device.device_info;
+  if (typeof info === 'object' && info !== null) {
+    const candidate = (info as { fingerprint?: unknown }).fingerprint;
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return candidate;
+    }
+  }
+
+  if (typeof device.device_fingerprint === 'string' && device.device_fingerprint.length > 0) {
+    return device.device_fingerprint;
+  }
+
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -535,14 +556,14 @@ export class EnterpriseMessageEncryption {
     }
   }
 
-  static async listDevices(userId: string): Promise<any[]> {
+  static async listDevices(userId: string): Promise<UserDeviceRow[]> {
     const { data } = await supabase
       .from('user_devices')
       .select('*')
       .eq('user_id', userId)
       .eq('is_active', true);
 
-    return data || [];
+    return (data as UserDeviceRow[] | null) || [];
   }
 
   static async revokeDevice(userId: string, deviceId: string): Promise<void> {
@@ -724,7 +745,7 @@ export class EnterpriseMessageEncryption {
   }
 
   static async getAuditLog(): Promise<AuditEvent[]> {
-    return await this.getAllFromStore(AUDIT_STORE);
+    return await this.getAllFromStore<AuditEvent>(AUDIT_STORE);
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -741,26 +762,22 @@ export class EnterpriseMessageEncryption {
         .eq('user_id', this.currentUserId)
         .eq('is_active', true);
 
-      if (!data) return false;
+      const activeDevices = (data as UserDeviceRow[] | null) || [];
+      if (activeDevices.length === 0) return false;
 
-      if (data.length > MAX_DEVICE_COUNT) {
+      if (activeDevices.length > MAX_DEVICE_COUNT) {
         await this.logAudit({
           timestamp: Date.now(),
           event: 'TOO_MANY_DEVICES',
           severity: 'critical',
-          details: { deviceCount: data.length },
+          details: { deviceCount: activeDevices.length },
         });
         return true;
       }
 
-      const fingerprints = data
-        .map((d) => {
-          if (typeof d.device_info === 'object' && d.device_info !== null) {
-            return (d.device_info as any).fingerprint || d.device_fingerprint;
-          }
-          return d.device_fingerprint;
-        })
-        .filter(Boolean);
+      const fingerprints = activeDevices
+        .map((d) => extractDeviceFingerprint(d))
+        .filter((value): value is string => typeof value === 'string' && value.length > 0);
 
       const duplicates = fingerprints.filter(
         (f: string, i: number) => fingerprints.indexOf(f) !== i
@@ -825,7 +842,7 @@ export class EnterpriseMessageEncryption {
     userId: string,
     password: string
   ): Promise<{ keyPair: KeyPair; version: number; createdAt: number } | null> {
-    const stored: StoredKeyPair | null = await this.getFromStore(STORE_NAME, userId);
+    const stored: StoredKeyPair | null = await this.getFromStore<StoredKeyPair>(STORE_NAME, userId);
 
     if (!stored) {
       console.log('🔑 [KEY-LOAD] No stored keys found in IndexedDB');
@@ -882,7 +899,7 @@ export class EnterpriseMessageEncryption {
   private static async saveToStore(
     storeName: string,
     key: string,
-    value: any
+    value: unknown
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, 3);
@@ -907,7 +924,7 @@ export class EnterpriseMessageEncryption {
     });
   }
 
-  private static async getFromStore(storeName: string, key: string): Promise<any> {
+  private static async getFromStore<T>(storeName: string, key: string): Promise<T | null> {
     return new Promise((resolve) => {
       const request = indexedDB.open(DB_NAME, 3);
 
@@ -927,7 +944,7 @@ export class EnterpriseMessageEncryption {
         const transaction = db.transaction([storeName], 'readonly');
         const store = transaction.objectStore(storeName);
         const getRequest = store.get(key);
-        getRequest.onsuccess = () => resolve(getRequest.result || null);
+        getRequest.onsuccess = () => resolve((getRequest.result as T) || null);
         getRequest.onerror = () => resolve(null);
       };
 
@@ -935,7 +952,7 @@ export class EnterpriseMessageEncryption {
     });
   }
 
-  private static async getAllFromStore(storeName: string): Promise<any[]> {
+  private static async getAllFromStore<T>(storeName: string): Promise<T[]> {
     return new Promise((resolve) => {
       const request = indexedDB.open(DB_NAME, 3);
 
@@ -949,17 +966,17 @@ export class EnterpriseMessageEncryption {
       request.onsuccess = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(storeName)) {
-          resolve([]);
+          resolve([] as T[]);
           return;
         }
         const transaction = db.transaction([storeName], 'readonly');
         const store = transaction.objectStore(storeName);
         const getAllRequest = store.getAll();
-        getAllRequest.onsuccess = () => resolve(getAllRequest.result || []);
-        getAllRequest.onerror = () => resolve([]);
+        getAllRequest.onsuccess = () => resolve((getAllRequest.result as T[]) || []);
+        getAllRequest.onerror = () => resolve([] as T[]);
       };
 
-      request.onerror = () => resolve([]);
+      request.onerror = () => resolve([] as T[]);
     });
   }
 
@@ -1133,7 +1150,7 @@ export class EnterpriseMessageEncryption {
 
   static async hasExistingKeys(userId: string): Promise<boolean> {
     try {
-      const stored = await this.getFromStore(STORE_NAME, userId);
+      const stored = await this.getFromStore<StoredKeyPair>(STORE_NAME, userId);
       return !!stored;
     } catch {
       return false;
