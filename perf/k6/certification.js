@@ -29,11 +29,17 @@ function normalizeBaseUrl(url) {
 }
 
 function assertHttpsUrl(url, envName) {
-  const parsed = new URL(url);
-  const isLocalhost = ['localhost', '127.0.0.1'].includes(parsed.hostname);
+  const match = url.match(/^(https?):\/\/([^/:?#]+)(?::\d+)?(?:[/?#]|$)/i);
+  if (!match) {
+    throw new Error(`${envName} must be a valid absolute URL`);
+  }
+
+  const protocol = match[1].toLowerCase();
+  const host = match[2].toLowerCase();
+  const isLocalhost = ['localhost', '127.0.0.1'].includes(host);
   const allowInsecureLocal = (__ENV.PERF_ALLOW_INSECURE_LOCAL || '').trim() === '1';
 
-  if (parsed.protocol !== 'https:' && !(allowInsecureLocal && isLocalhost)) {
+  if (protocol !== 'https' && !(allowInsecureLocal && isLocalhost)) {
     throw new Error(`${envName} must use https:// (or set PERF_ALLOW_INSECURE_LOCAL=1 for localhost testing)`);
   }
 }
